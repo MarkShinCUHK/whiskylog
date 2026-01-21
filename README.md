@@ -5,9 +5,30 @@ SvelteKit + Tailwind CSS 기반의 위스키 리뷰 및 게시글 커뮤니티 �
 ## 🚀 시작하기
 
 ### 필수 요구사항
-- Node.js 18 이상
+- Node.js 20 권장 (최소 18)
 - npm 또는 yarn
 - Supabase 계정 및 프로젝트
+
+## ☁️ 배포 (Vercel)
+
+### 현재 배포 도메인
+- Production: `https://dramlog-topaz.vercel.app`
+
+### 배포 방식
+- GitHub `main` 브랜치에 push하면 **Vercel이 자동으로 Production 배포**합니다.
+
+### Vercel 필수 설정
+- **Node.js 버전**: `20.x`
+- **Environment Variables** (Production/Preview/Development 모두 등록 권장)
+  - `PUBLIC_SUPABASE_URL`
+  - `PUBLIC_SUPABASE_ANON_KEY`
+
+### Supabase Auth 설정 (배포 도메인 반영)
+Supabase 대시보드 → Authentication → URL Configuration
+- **Site URL**: `https://dramlog-topaz.vercel.app`
+- **Redirect URLs**:
+  - `https://dramlog-topaz.vercel.app/*`
+  - `https://*.vercel.app/*` (Preview 도메인까지 사용할 경우)
 
 ### 설치 및 실행
 
@@ -201,3 +222,4 @@ DramLog를 위한 따뜻한 색감 (골드, 앰버, 다크 브라운)을 사용�
 - **2026-01-20**: MVP 3단계 완료 (게시글 수정/삭제 기능)
 - **2026-01-20**: Supabase 통합 완료
 - **2026-01-20**: 프로젝트 이름 DramLog로 통일
+- **2026-01-22**: Vercel 배포 완료 (Node 20 고정, 환경변수/Redirect URL 설정)

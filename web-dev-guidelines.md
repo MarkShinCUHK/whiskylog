@@ -23,7 +23,7 @@
 - Tailwind CSS만 사용한 스타일링
 - Supabase (PostgreSQL 기반 BaaS) 사용
 
-### 현재 단계 (2026-01-20 기준)
+### 현재 단계 (2026-01-22 기준)
 - ✅ 기본 라우트 구조 설계 및 구현
 - ✅ Tailwind 기반 UI 스켈레톤 생성
 - ✅ 위스키 커뮤니티 느낌의 색감/톤 적용
@@ -40,7 +40,7 @@
 - ✅ 게시글 CRUD 기능 구현 (생성, 조회, 목록)
 - ✅ Supabase 쿼리 계층 구조 구축 (`src/lib/server/supabase/queries/posts.ts`)
 - ✅ 프로젝트 이름 DramLog로 통일
-- ✅ 날짜 2026-01-20 기준으로 업데이트
+- ✅ 날짜 2026-01-22 기준으로 업데이트
 
 ---
 
@@ -53,7 +53,7 @@
   - 데이터베이스: PostgreSQL (Supabase 호스팅)
   - 인증: Supabase Auth (선택 로그인 - 회원가입/로그인/로그아웃/내 글 목록)
   - 스토리지: Supabase Storage (향후 사용 예정)
-- **TypeScript**: 타입 안정성 (선택사항, 현재는 JavaScript)
+- **TypeScript**: 타입 안정성 (서버 로직/타입 정의에 사용)
 
 ### 개발 도구
 - **Vite**: 빌드 도구 (SvelteKit 내장)
@@ -73,14 +73,27 @@
 ```
 src/routes/
 ├── +layout.svelte          # 루트 레이아웃 (헤더/푸터)
+├── +layout.server.ts       # 전역 세션 로드 (Header 등에서 사용)
 ├── +page.svelte            # 메인 페이지 (/)
 ├── +error.svelte           # 에러 페이지
+├── contact/
+│   └── +page.svelte        # 문의 페이지 (/contact)
+├── search/
+│   ├── +page.svelte        # 검색 결과 (/search)
+│   └── +page.server.ts     # 검색 로직
+├── login/                  # 로그인
+├── signup/                 # 회원가입
+├── logout/                 # 로그아웃
+├── my-posts/               # 내 글 목록
 ├── posts/
 │   ├── +page.svelte        # 게시글 리스트 (/posts)
 │   ├── +page.server.ts     # 서버 로직 (Supabase)
 │   └── [id]/
 │       ├── +page.svelte    # 게시글 상세 (/posts/[id])
-│       └── +page.server.ts # 서버 로직 (Supabase)
+│       ├── +page.server.ts # 서버 로직 (Supabase)
+│       └── edit/
+│           ├── +page.svelte
+│           └── +page.server.ts
 └── write/
     ├── +page.svelte        # 글 작성 (/write)
     └── +page.server.ts     # 서버 액션 (Supabase)
@@ -119,9 +132,12 @@ export async function load() {
 ```
 src/lib/server/supabase/
 ├── client.ts              # Supabase 클라이언트 생성
+├── auth.ts                # 쿠키 기반 세션 헬퍼
 ├── types.ts               # PostRow (DB), Post (UI) 타입 정의
 └── queries/
-    └── posts.ts           # 게시글 쿼리 함수들
+    ├── posts.ts           # 게시글 쿼리 함수들
+    ├── comments.ts        # 댓글 CRUD
+    └── likes.ts           # 좋아요 토글/조회
         - listPosts()       # 목록 조회
         - getPostById()     # 상세 조회
         - createPost()      # 생성
@@ -211,6 +227,13 @@ src/lib/
 │   ├── Header.svelte      # 헤더 컴포넌트 ✅
 │   ├── Footer.svelte     # 푸터 컴포넌트 ✅
 │   └── PostCard.svelte   # 게시글 카드 컴포넌트 ✅
+│   ├── SearchBar.svelte  # 검색바 ✅
+│   ├── Pagination.svelte # 페이지네이션 ✅
+│   ├── Skeleton.svelte   # 로딩 스켈레톤 ✅
+│   ├── LikeButton.svelte # 좋아요 버튼 ✅
+│   ├── CommentForm.svelte
+│   ├── CommentList.svelte
+│   └── CommentItem.svelte
 └── server/
     └── supabase/
         ├── client.ts     # Supabase 클라이언트 생성 ✅
@@ -846,4 +869,4 @@ CREATE TABLE posts (
 
 ---
 
-**마지막 업데이트**: 2026-01-22 (README/.cursorrules/web-dev-guidelines 정합성 업데이트)
+**마지막 업데이트**: 2026-01-22 (Vercel 배포 반영: Node 20, 환경변수, Supabase Auth URL)
