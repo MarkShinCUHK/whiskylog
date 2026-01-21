@@ -1,5 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { getPostById, deletePost } from '$lib/server/supabase/queries/posts';
+import { getUser } from '$lib/server/supabase/auth';
 
 export async function load({ params }) {
   try {
@@ -31,7 +32,7 @@ export async function load({ params }) {
 }
 
 export const actions = {
-  delete: async ({ params }) => {
+  delete: async ({ request, params, cookies }) => {
     try {
       const postId = params.id;
 
@@ -41,8 +42,22 @@ export const actions = {
         });
       }
 
+      const formData = await request.formData();
+      const editPassword = formData.get('editPassword')?.toString();
+      const user = await getUser(cookies);
+      const isLoggedIn = !!user;
+
+      if (!isLoggedIn && !editPassword) {
+        return fail(400, {
+          error: '비밀번호를 입력해주세요.'
+        });
+      }
+
       // 게시글 삭제
-      await deletePost(postId);
+      await deletePost(postId, {
+        userId: user?.id ?? null,
+        editPassword: isLoggedIn ? undefined : editPassword
+      });
 
       // 게시글 목록으로 리다이렉트
       throw redirect(303, '/posts');

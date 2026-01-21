@@ -1,5 +1,6 @@
 <script>
   import { enhance } from '$app/forms';
+  import { page } from '$app/stores';
   
   export let data;
 </script>
@@ -39,7 +40,7 @@
     </div>
 
     <!-- 하단 버튼 -->
-    <div class="mt-8 flex gap-4">
+    <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
       <a 
         href="/posts" 
         class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
@@ -52,7 +53,16 @@
       >
         수정하기
       </a>
-      <form method="POST" action="?/delete" use:enhance>
+      <form method="POST" action="?/delete" use:enhance class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        {#if !$page.data?.user}
+          <input
+            type="password"
+            name="editPassword"
+            placeholder="비밀번호 (삭제용)"
+            class="w-full sm:w-56 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+            required
+          />
+        {/if}
         <button
           type="submit"
           class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"

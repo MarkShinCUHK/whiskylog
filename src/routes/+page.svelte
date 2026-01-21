@@ -1,7 +1,16 @@
 <script>
   import PostCard from '$lib/components/PostCard.svelte';
+  import { invalidateAll } from '$app/navigation';
+  import { page } from '$app/stores';
   
   export let data;
+  
+  // 로그아웃 후 리다이렉트 시 데이터 갱신
+  $: if ($page.url.searchParams.get('logout') === '1') {
+    invalidateAll();
+    // URL에서 쿼리 파라미터 제거 (히스토리 정리)
+    window.history.replaceState({}, '', '/');
+  }
 </script>
 
 <svelte:head>
@@ -36,7 +45,7 @@
     </div>
     
     {#if data.posts && data.posts.length > 0}
-      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {#each data.posts.slice(0, 6) as post}
           <PostCard {post} />
         {/each}

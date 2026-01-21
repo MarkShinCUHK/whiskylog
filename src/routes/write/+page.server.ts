@@ -1,19 +1,22 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { createPost } from '$lib/server/supabase/queries/posts';
+import { getUser } from '$lib/server/supabase/auth';
 
 export const actions = {
-  default: async ({ request }) => {
+  default: async ({ request, cookies }) => {
     try {
       const formData = await request.formData();
       const title = formData.get('title')?.toString();
       const content = formData.get('content')?.toString();
       const author = formData.get('author')?.toString();
       const excerpt = formData.get('excerpt')?.toString();
+      const editPassword = formData.get('editPassword')?.toString();
+      const editPasswordConfirm = formData.get('editPasswordConfirm')?.toString();
 
       // 유효성 검사
-      if (!title || !content || !author) {
+      if (!title || !content) {
         return fail(400, {
-          error: '제목, 내용, 작성자를 모두 입력해주세요.',
+          error: '제목과 내용을 입력해주세요.',
           values: {
             title: title || '',
             content: content || '',
@@ -23,11 +26,43 @@ export const actions = {
         });
       }
 
+      const user = await getUser(cookies);
+      const isLoggedIn = !!user;
+
+      if (!isLoggedIn) {
+        if (!editPassword || editPassword.length < 4) {
+          return fail(400, {
+            error: '비밀번호는 4자 이상으로 입력해주세요.',
+            values: {
+              title: title || '',
+              content: content || '',
+              author: author || '',
+              excerpt: excerpt || ''
+            }
+          });
+        }
+
+        if (editPassword !== editPasswordConfirm) {
+          return fail(400, {
+            error: '비밀번호 확인이 일치하지 않습니다.',
+            values: {
+              title: title || '',
+              content: content || '',
+              author: author || '',
+              excerpt: excerpt || ''
+            }
+          });
+        }
+      }
+
       // 게시글 생성 (queries/posts.ts의 createPost 사용)
       const post = await createPost({
         title,
         content,
-        author_name: author
+        // 로그인 사용자는 닉네임을 작성자명으로 강제
+        author_name: isLoggedIn ? (user?.nickname || user?.email || undefined) : (author || undefined),
+        edit_password: isLoggedIn ? undefined : editPassword,
+        user_id: user?.id ?? null
         // excerpt는 현재 스키마에 없으므로 제외
       });
 

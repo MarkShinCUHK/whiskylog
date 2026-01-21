@@ -51,7 +51,7 @@
 - **Tailwind CSS**: 유틸리티 기반 CSS 프레임워크
 - **Supabase**: PostgreSQL 기반 BaaS (Backend as a Service)
   - 데이터베이스: PostgreSQL (Supabase 호스팅)
-  - 인증: Supabase Auth (향후 사용 예정)
+  - 인증: Supabase Auth (선택 로그인 - 회원가입/로그인/로그아웃/내 글 목록)
   - 스토리지: Supabase Storage (향후 사용 예정)
 - **TypeScript**: 타입 안정성 (선택사항, 현재는 JavaScript)
 
@@ -61,7 +61,7 @@
 - **Prettier**: 코드 포맷팅 (선택사항)
 
 ### 현재 제외
-- ❌ 인증 시스템 (향후 추가)
+- ❌ (없음) 기본 로그인 기능은 이미 구현됨 (선택 로그인)
 - ❌ 복잡한 상태 관리 라이브러리
 
 ---
@@ -211,13 +211,12 @@ src/lib/
 │   ├── Header.svelte      # 헤더 컴포넌트 ✅
 │   ├── Footer.svelte     # 푸터 컴포넌트 ✅
 │   └── PostCard.svelte   # 게시글 카드 컴포넌트 ✅
-├── db/
-│   ├── index.ts          # DB 연결 유틸리티 ✅
-│   ├── posts.ts          # 게시글 쿼리 함수 ✅
-│   ├── schema.sql        # 데이터베이스 스키마 ✅
-│   └── migrate.ts        # 마이그레이션 스크립트 ✅
-└── data/
-    └── dummyPosts.ts     # 더미 데이터 (참고용) ✅
+└── server/
+    └── supabase/
+        ├── client.ts     # Supabase 클라이언트 생성 ✅
+        ├── types.ts      # 타입 정의 ✅
+        └── queries/
+            └── posts.ts   # 게시글 쿼리 함수 ✅
 ```
 
 ### 컴포넌트 예시
@@ -405,55 +404,6 @@ Tailwind 기본 간격 사용:
 
 ---
 
-## 더미 데이터 구조
-
-### 게시글 데이터
-
-```typescript
-interface Post {
-  id: number;
-  title: string;
-  content: string;
-  author: string;
-  createdAt: string;
-  excerpt?: string;
-  views?: number;
-  likes?: number;
-}
-```
-
-### 더미 데이터 구조 (중앙화)
-
-더미 데이터는 `src/lib/data/dummyPosts.ts`에 중앙화되어 있으며, 각 페이지에서 import하여 사용합니다.
-
-```typescript
-// src/lib/data/dummyPosts.ts
-export const dummyPosts = [
-  {
-    id: 1,
-    title: '맥캘란 12년 싱글 몰트 리뷰',
-    content: '맥캘란 12년은...',
-    author: '위스키러버',
-    createdAt: '2026-01-20',
-    excerpt: '맥캘란 12년의 깊은 맛과 향을 리뷰합니다.',
-    views: 123,
-    likes: 45
-  },
-  // ...
-];
-
-// src/routes/posts/+page.server.ts
-import { dummyPosts } from '$lib/data/dummyPosts';
-
-export async function load() {
-  return {
-    posts: dummyPosts
-  };
-}
-```
-
----
-
 ## 성능 최적화
 
 ### SvelteKit 최적화
@@ -498,7 +448,6 @@ export async function load() {
 5. ✅ 게시글 리스트/상세 페이지
 6. ✅ 글 작성 페이지
 7. ✅ 공통 컴포넌트 (Header, Footer, PostCard)
-8. ✅ 더미 데이터 구조화 및 중앙화
 
 ### MVP 2단계 완료 ✅ (2026-01-20)
 - ✅ Supabase 통합 완료 (글 작성/목록/상세 - 완전 전환)
@@ -520,7 +469,7 @@ export async function load() {
      - 서버 액션으로 업데이트 (`updatePost` 함수) ✅
      - 수정 완료 후 상세 페이지로 리다이렉트 ✅
    - 쿼리 함수: `src/lib/server/supabase/queries/posts.ts`에 `updatePost(id, input)` 추가 완료 ✅
-   - 권한: 현재는 모든 사용자 수정 가능 (MVP 4에서 본인 글만 수정 가능하도록 변경 예정)
+   - 권한: 익명 글은 비밀번호로 수정 가능, 로그인 글은 `user_id`로 내 글 목록 제공 (추후 권한 강화 가능)
 
 2. ✅ **게시글 삭제 기능**
    - 위치: 게시글 상세 페이지 (`/posts/[id]`) ✅
@@ -530,111 +479,230 @@ export async function load() {
      - 서버 액션으로 삭제 (`deletePost` 함수) ✅
      - 삭제 완료 후 게시글 목록으로 리다이렉트 ✅
    - 쿼리 함수: `src/lib/server/supabase/queries/posts.ts`에 `deletePost(id)` 추가 완료 ✅
-   - 권한: 현재는 모든 사용자 삭제 가능 (MVP 4에서 본인 글만 삭제 가능하도록 변경 예정)
+   - 권한: 익명 글은 비밀번호로 삭제 가능 (추후 권한 강화 가능)
 
 3. ✅ **구현 세부사항**
    - 에러 처리: 존재하지 않는 게시글, 잘못된 ID 등 처리 완료 ✅
    - UI: Tailwind로 버튼 스타일링 완료 ✅
    - 사용자 피드백: confirm 다이얼로그로 삭제 확인 ✅
 
-### MVP 4단계: 인증 시스템 (다음 단계)
-**목표**: 사용자 인증 및 권한 관리 구현
+### MVP 4단계: 익명 게시판 + 선택 로그인 (개인 DB) (완료 ✅)
+**목표**: 디시 위스키갤 스타일의 익명 게시판 구현 (로그인 없이 글 작성 가능, 비밀번호로 관리)
 
-1. **인증 방식 선택**
-   - 옵션 1: **Auth.js** (SvelteKit 공식, 추천)
-     - 장점: 표준화된 인증, 다양한 프로바이더 지원
-     - 단점: 초기 설정 복잡
-   - 옵션 2: **직접 구현** (세션 기반)
-     - 장점: 단순하고 제어 가능
-     - 단점: 보안 구현에 주의 필요
-   - 옵션 3: **Supabase Auth** (필요시)
-     - 장점: 완전 관리형, 빠른 구현
-     - 단점: 외부 서비스 의존
+1. ✅ **익명 게시글 작성 기능**
+   - 로그인 없이 게시글 작성 가능
+   - 기본 작성자명: `익명의 위스키 러버` (작성자명 입력은 선택사항)
+   - 게시글 작성 시 비밀번호 필수 입력 (수정/삭제용)
 
-2. **인증 기능 구현**
-   - 라우트:
-     - `/login` (로그인 페이지)
-     - `/signup` (회원가입 페이지)
-   - DB 스키마:
-     - `users` 테이블 생성 (id, email, password_hash, username, created_at)
-     - `posts` 테이블에 `user_id` 컬럼 추가 (외래키)
-   - 세션 관리:
-     - SvelteKit의 `cookies` 사용
-     - JWT 또는 세션 토큰 방식
+2. ✅ **게시글 비밀번호 관리**
+   - `posts` 테이블에 `edit_password_hash TEXT` 컬럼 추가
+   - 서버에서 비밀번호를 scrypt 해시로 저장 (평문 저장 금지)
+   - 수정/삭제 시 비밀번호 검증 (timing-safe 비교)
 
-3. **권한 관리**
-   - 본인 게시글만 수정/삭제 가능
-   - 로그인한 사용자만 글 작성 가능
-   - 미로그인 사용자는 읽기만 가능
+3. ✅ **데이터베이스 스키마**
+   - `author_name TEXT NOT NULL DEFAULT '익명의 위스키 러버'`
+   - `edit_password_hash TEXT` (익명 글이면 값 존재)
+   - `user_id UUID` (선택 로그인 도입 시 사용, 게스트 글 Claim 없음)
+
+4. ✅ **구현 완료**
+   - `/write`: 로그인 여부에 따라 UI 분기 (로그인: 닉네임 자동/비번 없음, 익명: 작성자 선택/비번 필수)
+   - `/posts/[id]/edit`: 로그인 글은 `user_id`로 수정, 익명 글은 비밀번호 검증
+   - `/posts/[id]`: 로그인 글은 `user_id`로 삭제, 익명 글은 비밀번호 검증
+   - 쿼리 계층: `createPost()`, `updatePost()`, `deletePost()`에 (로그인 `user_id`) 또는 (익명 비밀번호) 둘 다 지원
+
+5. ✅ **선택 로그인 기능** (Supabase Auth)
+   - ✅ 라우트: `/login`, `/signup`, `/logout`, `/my-posts`
+   - ✅ 전역 세션 로드: `src/routes/+layout.server.ts`
+   - ✅ 쿠키 세션 헬퍼: `src/lib/server/supabase/auth.ts`
+   - ✅ 로그인 사용자 글 작성: 닉네임(`user_metadata.nickname`) 자동 적용, 비밀번호 입력 불필요, `user_id`로 수정/삭제
+   - ✅ 익명/로그인 구분: 같은 페이지(`/write`)에서 `$page.data.user`로 로그인 여부 확인하여 UI/로직 자동 분기
+   - 로그인은 개인 DB(보유 위스키, 북마크 등)용으로만 사용
+   - 내 글 목록: `/my-posts` (posts.user_id 기준)
+   - 게스트 글 Claim 기능 없음 (익명 글은 계속 익명 소유)
 
 ### MVP 5단계: 핵심 기능 강화
 **목표**: 커뮤니티 기능 확장
 
 1. **검색 기능**
-   - 라우트: `/search` 또는 쿼리 파라미터 (`/posts?q=검색어`)
-   - 기능:
-     - 게시글 제목/내용 검색
-     - 검색 결과 페이지
-     - 하이라이트 표시 (선택사항)
-   - DB 최적화:
-     - `posts` 테이블에 `title`, `content` 컬럼에 인덱스 추가 고려
-     - Full-text search 활용 (PostgreSQL의 `tsvector`)
+   - **파일 구조**:
+     ```
+     src/
+     ├── routes/
+     │   └── search/
+     │       ├── +page.svelte (검색 결과 페이지)
+     │       └── +page.server.ts (검색 로직)
+     ├── lib/
+     │   ├── server/
+     │   │   └── supabase/
+     │   │       └── queries/
+     │   │           └── posts.ts (searchPosts 함수 추가)
+     │   └── components/
+     │       └── SearchBar.svelte (검색바 컴포넌트)
+     ```
+   - **구현 세부사항**:
+     - **검색바 컴포넌트** (`SearchBar.svelte`):
+       - Header에 통합 또는 독립 컴포넌트
+       - 입력 시 `/search?q=검색어`로 이동
+     - **검색 쿼리 함수** (`searchPosts(query: string)`):
+       - Supabase `ilike` 또는 `textSearch` 사용
+       - 제목과 내용 모두 검색
+       - 결과를 `Post[]` 타입으로 반환
+     - **검색 결과 페이지** (`/search`):
+       - 쿼리 파라미터 `q` 읽기
+       - 검색 결과 목록 표시
+       - 결과 없음 메시지
+     - **DB 최적화**:
+       - `posts` 테이블에 `title`, `content` 컬럼에 GIN 인덱스 추가 (Full-text search)
 
 2. **댓글 시스템**
-   - DB 스키마:
-     - `comments` 테이블 생성 (id, post_id, user_id, content, created_at, updated_at)
-   - 기능:
-     - 게시글 상세 페이지에 댓글 섹션
-     - 댓글 작성/수정/삭제
-     - 댓글 목록 표시 (최신순/오래된순)
-   - 컴포넌트:
-     - `CommentList.svelte`
-     - `CommentForm.svelte`
-     - `CommentItem.svelte`
+   - **파일 구조**:
+     ```
+     src/
+     ├── routes/
+     │   └── posts/
+     │       └── [id]/
+     │           └── +page.svelte (댓글 섹션 추가)
+     ├── lib/
+     │   ├── server/
+     │   │   └── supabase/
+     │   │       ├── queries/
+     │   │       │   └── comments.ts (댓글 CRUD 함수)
+     │   │       └── types.ts (Comment 타입 추가)
+     │   └── components/
+     │       ├── CommentList.svelte (댓글 목록)
+     │       ├── CommentForm.svelte (댓글 작성 폼)
+     │       └── CommentItem.svelte (댓글 아이템)
+     ```
+   - **데이터베이스 스키마**:
+     ```sql
+     CREATE TABLE comments (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+       user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+       content TEXT NOT NULL,
+       created_at TIMESTAMPTZ DEFAULT NOW(),
+       updated_at TIMESTAMPTZ DEFAULT NOW()
+     );
+     CREATE INDEX idx_comments_post_id ON comments(post_id);
+     CREATE INDEX idx_comments_created_at ON comments(created_at DESC);
+     ```
+   - **구현 세부사항**:
+     - **댓글 쿼리 함수** (`src/lib/server/supabase/queries/comments.ts`):
+       - `listComments(postId: string)`: 게시글의 댓글 목록 조회
+       - `createComment(postId: string, content: string, userId: string)`: 댓글 작성
+       - `updateComment(commentId: string, content: string, userId: string)`: 댓글 수정
+       - `deleteComment(commentId: string, userId: string)`: 댓글 삭제
+     - **댓글 컴포넌트**:
+       - `CommentList.svelte`: 댓글 목록 표시 (최신순)
+       - `CommentForm.svelte`: 댓글 작성 폼 (인증 필요)
+       - `CommentItem.svelte`: 개별 댓글 표시 (수정/삭제 버튼 포함)
+     - **게시글 상세 페이지 업데이트**:
+       - 댓글 섹션 추가
+       - 댓글 작성/수정/삭제 기능
 
 3. **좋아요 기능**
-   - DB 스키마:
-     - 옵션 1: `posts` 테이블의 `likes` 컬럼 활용 (간단)
-     - 옵션 2: `likes` 테이블 생성 (user_id, post_id) - 중복 좋아요 방지
-   - 기능:
-     - 좋아요 버튼 (하트 아이콘)
-     - 좋아요 카운트 표시
-     - 좋아요 토글 (클릭 시 추가/제거)
+   - **파일 구조**:
+     ```
+     src/
+     ├── lib/
+     │   ├── server/
+     │   │   └── supabase/
+     │   │       ├── queries/
+     │   │       │   └── likes.ts (좋아요 함수)
+     │   │       └── types.ts (Like 타입 추가)
+     │   └── components/
+     │       └── LikeButton.svelte (좋아요 버튼)
+     ```
+   - **데이터베이스 스키마**:
+     ```sql
+     CREATE TABLE likes (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+       user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+       created_at TIMESTAMPTZ DEFAULT NOW(),
+       UNIQUE(post_id, user_id) -- 중복 좋아요 방지
+     );
+     CREATE INDEX idx_likes_post_id ON likes(post_id);
+     CREATE INDEX idx_likes_user_id ON likes(user_id);
+     ```
+   - **구현 세부사항**:
+     - **좋아요 쿼리 함수** (`src/lib/server/supabase/queries/likes.ts`):
+       - `getLikeCount(postId: string)`: 좋아요 개수 조회
+       - `isLiked(postId: string, userId: string)`: 사용자가 좋아요 했는지 확인
+       - `toggleLike(postId: string, userId: string)`: 좋아요 토글 (추가/제거)
+     - **LikeButton 컴포넌트**:
+       - 하트 아이콘 (채워짐/비어있음)
+       - 좋아요 개수 표시
+       - 클릭 시 토글 (인증 필요)
+     - **게시글 상세 페이지 업데이트**:
+       - LikeButton 컴포넌트 추가
+       - PostCard 컴포넌트에 좋아요 개수 표시 (선택사항)
 
 ### MVP 6단계: UI/UX 개선
 **목표**: 사용자 경험 향상 및 반응형 최적화
 
 1. **반응형 디자인**
-   - 모바일 (< 640px): 단일 컬럼, 터치 친화적 버튼
-   - 태블릿 (640px - 1024px): 2컬럼 레이아웃
-   - 데스크톱 (> 1024px): 최적화된 레이아웃
-   - Tailwind의 반응형 유틸리티 클래스 활용
+   - **모바일 최적화** (< 640px):
+     - Header: 햄버거 메뉴 또는 간소화된 네비게이션
+     - 게시글 목록: 단일 컬럼, 카드 레이아웃
+     - 버튼: 터치 친화적 크기 (최소 44x44px)
+   - **태블릿 레이아웃** (640px - 1024px):
+     - 게시글 목록: 2컬럼 그리드
+     - 사이드바 또는 추가 정보 표시
+   - **데스크톱 레이아웃** (> 1024px):
+     - 최대 너비 제한 (예: max-w-7xl)
+     - 최적화된 여백 및 간격
+   - **Tailwind 반응형 클래스 활용**:
+     - `sm:`, `md:`, `lg:`, `xl:` 브레이크포인트 사용
+     - Mobile First 접근
 
 2. **사용자 경험 개선**
-   - 로딩 상태:
-     - 스켈레톤 UI 또는 스피너
-     - `{#await}` 블록 활용
-   - 에러 처리:
-     - 친화적인 에러 메시지
-     - 에러 페이지 (`+error.svelte`)
-   - 피드백:
-     - 성공 메시지 (토스트 알림)
-     - 폼 유효성 검사 실시간 표시
-   - 페이지네이션:
-     - 게시글 목록 페이지네이션
-     - DB 쿼리 최적화 (LIMIT, OFFSET)
+   - **로딩 상태**:
+     - **스켈레톤 UI 컴포넌트** (`src/lib/components/Skeleton.svelte`):
+       - 게시글 목록 로딩 시 스켈레톤 표시
+       - Tailwind 애니메이션 활용
+     - **SvelteKit `{#await}` 블록 활용**:
+       - 비동기 데이터 로딩 상태 표시
+       - 에러 상태 처리
+   - **에러 처리**:
+     - **에러 페이지 개선** (`src/routes/+error.svelte`):
+       - 친화적인 에러 메시지
+       - 홈으로 돌아가기 버튼
+       - 에러 코드별 메시지 (404, 500 등)
+     - **폼 에러 처리**:
+       - 실시간 유효성 검사
+       - 필드별 에러 메시지 표시
+       - 서버 에러 메시지 표시
+   - **피드백**:
+     - **토스트 알림 시스템** (선택사항):
+       - 성공/에러 메시지 표시
+       - 자동 사라짐 (3-5초)
+       - 컴포넌트: `Toast.svelte`, `ToastContainer.svelte`
+     - **성공 피드백**:
+       - 글 작성/수정/삭제 성공 시 메시지
+       - 댓글 작성 성공 시 메시지
+   - **페이지네이션**:
+     - **게시글 목록 페이지네이션**:
+       - 페이지당 게시글 수 제한 (예: 10개)
+       - 이전/다음 페이지 버튼
+       - 페이지 번호 표시 (선택사항)
+     - **쿼리 함수 업데이트**:
+       - `listPosts(limit?: number, offset?: number)`: 페이지네이션 지원
+       - `getPostCount()`: 전체 게시글 개수 조회
+     - **컴포넌트**: `Pagination.svelte`
 
 3. **성능 최적화**
-   - 이미지 최적화 (이미지 업로드 기능 추가 시):
+   - **이미지 최적화** (향후 이미지 업로드 기능 추가 시):
      - Lazy loading
      - WebP 형식 지원
      - 썸네일 생성
-   - 코드 스플리팅:
+   - **코드 스플리팅**:
      - SvelteKit의 자동 코드 스플리팅 활용
-   - DB 최적화:
-     - 인덱스 추가
+     - 라우트별 코드 분리
+   - **DB 최적화**:
+     - 인덱스 추가 (이미 일부 구현됨)
      - 쿼리 최적화
-     - 연결 풀링 (이미 구현됨)
+     - 연결 풀링 (Supabase에서 자동 관리)
 
 ### 향후 추가 예정
 - 이미지 업로드 (로컬 스토리지 또는 클라우드 스토리지)
@@ -665,7 +733,7 @@ export async function load() {
 
 3. **데이터베이스 스키마 생성**
    - Supabase 대시보드 → SQL Editor 열기
-   - `src/lib/server/db-old/supabase-schema.sql` 파일의 내용 실행 (또는 직접 SQL 작성)
+   - `supabase-schema.sql` 파일의 내용 실행 (또는 직접 SQL 작성)
    - 테이블 생성 및 인덱스 생성 확인
 
 ### Supabase 클라이언트 사용
@@ -791,8 +859,7 @@ CREATE TABLE posts (
 - **현재 단계**: 완료된 작업을 ✅로 표시
 - **다음 단계**: 진행 상황에 맞게 우선순위 조정
 - **컴포넌트 구조**: 새로 생성된 컴포넌트 추가
-- **더미 데이터 구조**: 변경사항 반영
 
 ---
 
-**마지막 업데이트**: 2026-01-20 (MVP 3: 게시글 수정/삭제 완료)
+**마지막 업데이트**: 2026-01-21 (MVP 4: 로그인 사용자 글 작성 완료, 익명/로그인 구분 개발 규칙 추가)

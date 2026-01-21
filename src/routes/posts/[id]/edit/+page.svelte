@@ -1,5 +1,6 @@
 <script>
   import { enhance } from '$app/forms';
+  import { page } from '$app/stores';
   
   export let data;
   export let form;
@@ -8,6 +9,12 @@
   let content = form?.values?.content || data.post?.content || '';
   let author = form?.values?.author || data.post?.author || '';
   let error = form?.error || '';
+  let editPassword = '';
+
+  $: isLoggedIn = !!$page.data?.user;
+  $: if (isLoggedIn) {
+    author = $page.data.user.nickname || $page.data.user.email || author;
+  }
 </script>
 
 <svelte:head>
@@ -35,10 +42,13 @@
         id="author"
         name="author"
         bind:value={author}
-        placeholder="작성자 이름을 입력하세요"
-        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none"
-        required
+        placeholder="미입력 시: 익명의 위스키 러버"
+        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none disabled:bg-gray-50 disabled:text-gray-600"
+        disabled={isLoggedIn}
       />
+      {#if isLoggedIn}
+        <p class="mt-2 text-sm text-gray-500">로그인 상태에서는 닉네임(또는 이메일)로 작성자명이 자동 설정됩니다.</p>
+      {/if}
     </div>
 
     <!-- 제목 -->
@@ -72,6 +82,24 @@
         required
       ></textarea>
     </div>
+
+    {#if !isLoggedIn}
+      <!-- 비밀번호 -->
+      <div class="mb-8">
+        <label for="editPassword" class="block text-sm font-medium text-gray-700 mb-2">
+          비밀번호 (수정용)
+        </label>
+        <input
+          type="password"
+          id="editPassword"
+          name="editPassword"
+          bind:value={editPassword}
+          placeholder="작성 시 설정한 비밀번호"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none"
+          required
+        />
+      </div>
+    {/if}
 
     <!-- 버튼 -->
     <div class="flex gap-4 justify-end">

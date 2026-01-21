@@ -5,7 +5,9 @@ export type PostRow = {
   id: string; // UUID
   title: string;
   content: string;
-  author_name: string | null;
+  author_name: string;
+  edit_password_hash?: string | null;
+  user_id?: string | null;
   created_at: string; // ISO 8601 timestamptz
   // 선택적 필드들 (스키마에 없어도 안전하게 처리)
   like_count?: number | null;

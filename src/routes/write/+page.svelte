@@ -1,5 +1,6 @@
 <script>
   import { enhance } from '$app/forms';
+  import { page } from '$app/stores';
   
   export let form;
   
@@ -8,6 +9,14 @@
   let author = form?.values?.author || '';
   let excerpt = form?.values?.excerpt || '';
   let error = form?.error || '';
+  let editPassword = '';
+  let editPasswordConfirm = '';
+
+  $: isLoggedIn = !!$page.data?.user;
+  $: if (isLoggedIn) {
+    // 로그인 사용자는 닉네임을 작성자명으로 고정 (서버에서도 강제함)
+    author = $page.data.user.nickname || $page.data.user.email || author;
+  }
 </script>
 
 <svelte:head>
@@ -35,10 +44,13 @@
         id="author"
         name="author"
         bind:value={author}
-        placeholder="작성자 이름을 입력하세요"
-        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none"
-        required
+        placeholder="미입력 시: 익명의 위스키 러버"
+        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none disabled:bg-gray-50 disabled:text-gray-600"
+        disabled={isLoggedIn}
       />
+      {#if isLoggedIn}
+        <p class="mt-2 text-sm text-gray-500">로그인 상태에서는 닉네임(또는 이메일)로 작성자명이 자동 설정됩니다.</p>
+      {/if}
     </div>
 
     <!-- 제목 -->
@@ -87,6 +99,42 @@
         required
       ></textarea>
     </div>
+
+    {#if !isLoggedIn}
+      <!-- 익명 글 관리 비밀번호 -->
+      <div class="mb-6">
+        <label for="editPassword" class="block text-sm font-medium text-gray-700 mb-2">
+          비밀번호 (수정/삭제용)
+        </label>
+        <input
+          type="password"
+          id="editPassword"
+          name="editPassword"
+          bind:value={editPassword}
+          placeholder="4자 이상"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none"
+          required
+          minlength="4"
+        />
+        <p class="mt-2 text-sm text-gray-500">이 비밀번호는 글 수정/삭제에 필요합니다. 잊어버리면 복구가 어렵습니다.</p>
+      </div>
+
+      <div class="mb-8">
+        <label for="editPasswordConfirm" class="block text-sm font-medium text-gray-700 mb-2">
+          비밀번호 확인
+        </label>
+        <input
+          type="password"
+          id="editPasswordConfirm"
+          name="editPasswordConfirm"
+          bind:value={editPasswordConfirm}
+          placeholder="비밀번호를 다시 입력하세요"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none"
+          required
+          minlength="4"
+        />
+      </div>
+    {/if}
 
     <!-- 버튼 -->
     <div class="flex gap-4 justify-end">

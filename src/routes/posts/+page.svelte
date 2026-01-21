@@ -15,7 +15,7 @@
   </div>
 
   {#if data.posts && data.posts.length > 0}
-    <div class="space-y-4">
+    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {#each data.posts as post}
         <PostCard {post} />
       {/each}
