@@ -1,6 +1,7 @@
 <script>
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
+  import { showToast } from '$lib/stores/toast';
   
   export let form;
   
@@ -9,8 +10,105 @@
   let author = form?.values?.author || '';
   let excerpt = form?.values?.excerpt || '';
   let error = form?.error || '';
+  let fieldErrors = form?.fieldErrors || {};
   let editPassword = '';
   let editPasswordConfirm = '';
+
+  // 클라이언트 사이드 실시간 유효성 검사 (blur 이벤트 후에만 표시)
+  let clientFieldErrors = {};
+  let touchedFields = {}; // blur된 필드만 추적
+
+  // form이 업데이트되면 클라이언트 에러 초기화
+  $: if (form) {
+    // 서버에서 에러가 없으면 클라이언트 에러도 초기화
+    if (!form.fieldErrors || Object.keys(form.fieldErrors).length === 0) {
+      clientFieldErrors = {};
+    }
+  }
+
+  function validateTitle() {
+    if (touchedFields.title) {
+      if (title.trim().length === 0) {
+        clientFieldErrors = { ...clientFieldErrors, title: '제목을 입력해주세요.' };
+      } else {
+        clientFieldErrors = { ...clientFieldErrors };
+        delete clientFieldErrors.title;
+      }
+    }
+  }
+
+  function validateContent() {
+    if (touchedFields.content) {
+      if (content.trim().length === 0) {
+        clientFieldErrors = { ...clientFieldErrors, content: '내용을 입력해주세요.' };
+      } else {
+        clientFieldErrors = { ...clientFieldErrors };
+        delete clientFieldErrors.content;
+      }
+    }
+  }
+
+  function validatePassword() {
+    if (!isLoggedIn) {
+      // 입력 중이거나 blur된 경우에만 검사
+      if (touchedFields.editPassword || editPassword.length > 0) {
+        // 빈 값이면 에러 표시 안 함
+        if (editPassword.length === 0) {
+          clientFieldErrors = { ...clientFieldErrors };
+          delete clientFieldErrors.editPassword;
+        } else if (editPassword.length < 4) {
+          clientFieldErrors = { ...clientFieldErrors, editPassword: '비밀번호는 4자 이상으로 입력해주세요.' };
+        } else {
+          clientFieldErrors = { ...clientFieldErrors };
+          delete clientFieldErrors.editPassword;
+        }
+      }
+    }
+  }
+
+  function validatePasswordConfirm() {
+    if (!isLoggedIn) {
+      // 입력 중이거나 blur된 경우에만 검사
+      if (touchedFields.editPasswordConfirm || editPasswordConfirm.length > 0) {
+        // 빈 값이면 에러 표시 안 함
+        if (editPasswordConfirm.length === 0) {
+          clientFieldErrors = { ...clientFieldErrors };
+          delete clientFieldErrors.editPasswordConfirm;
+          return;
+        }
+        
+        // editPassword가 아직 입력되지 않았거나 비어있으면 에러 없음
+        if (!editPassword || editPassword.length === 0) {
+          clientFieldErrors = { ...clientFieldErrors };
+          delete clientFieldErrors.editPasswordConfirm;
+          return;
+        }
+        
+        // 둘 다 입력된 경우 비교
+        if (editPassword.trim() === editPasswordConfirm.trim()) {
+          clientFieldErrors = { ...clientFieldErrors };
+          delete clientFieldErrors.editPasswordConfirm;
+        } else {
+          clientFieldErrors = { ...clientFieldErrors, editPasswordConfirm: '비밀번호 확인이 일치하지 않습니다.' };
+        }
+      }
+    }
+  }
+
+  // 실시간 검사 (입력 중에도 반영)
+  $: if (title !== undefined && touchedFields.title) validateTitle();
+  $: if (content !== undefined && touchedFields.content) validateContent();
+  // 비밀번호는 입력 중에도 검사 (빈 값 제외)
+  $: if (editPassword !== undefined && !isLoggedIn) {
+    validatePassword();
+    // 비밀번호가 변경되면 확인 필드도 다시 검사
+    validatePasswordConfirm();
+  }
+  // 비밀번호 확인도 입력 중에도 검사 (빈 값 제외)
+  $: if (editPasswordConfirm !== undefined && !isLoggedIn) validatePasswordConfirm();
+
+  // 서버 에러와 클라이언트 에러 병합 (서버 에러가 우선)
+  $: allFieldErrors = { ...clientFieldErrors, ...fieldErrors };
 
   $: isLoggedIn = !!$page.data?.user;
   $: if (isLoggedIn) {
@@ -23,10 +121,34 @@
   <title>글 작성 - DramLog</title>
 </svelte:head>
 
-<div class="max-w-4xl mx-auto px-4 py-12">
+<div class="max-w-4xl xl:max-w-5xl mx-auto px-4 xl:px-8 py-12">
   <h1 class="text-4xl sm:text-5xl font-bold text-whiskey-900 mb-10 tracking-tight">글 작성</h1>
 
-  <form method="POST" use:enhance class="rounded-2xl bg-white/80 backdrop-blur-sm p-8 sm:p-10 ring-1 ring-black/5 shadow-sm">
+  <form
+    method="POST"
+    use:enhance={() => {
+      return async ({ result, update }) => {
+        // 기본 업데이트 먼저 수행
+        await update();
+        
+        // 성공/실패 시 토스트 표시
+        if (result.type === 'success') {
+          try {
+            showToast('게시글이 작성되었습니다.', 'success');
+          } catch (e) {
+            console.error('토스트 표시 오류:', e);
+          }
+        } else if (result.type === 'failure' && result.data?.error) {
+          try {
+            showToast(result.data.error, 'error');
+          } catch (e) {
+            console.error('토스트 표시 오류:', e);
+          }
+        }
+      };
+    }}
+    class="rounded-2xl bg-white/80 backdrop-blur-sm p-8 sm:p-10 ring-1 ring-black/5 shadow-sm"
+  >
     <!-- 에러 메시지 -->
     {#if error}
       <div class="mb-8 p-4 bg-red-50/80 border border-red-200/50 rounded-lg text-red-700 text-sm">
@@ -45,7 +167,7 @@
         name="author"
         bind:value={author}
         placeholder="미입력 시: 익명의 위스키 러버"
-        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
+        class="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
         disabled={isLoggedIn}
       />
       {#if isLoggedIn}
@@ -64,9 +186,20 @@
         name="title"
         bind:value={title}
         placeholder="게시글 제목을 입력하세요"
-        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
+        class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.title ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
         required
+        on:input={() => {
+          touchedFields.title = true;
+          validateTitle();
+        }}
+        on:blur={() => {
+          touchedFields.title = true;
+          validateTitle();
+        }}
       />
+      {#if allFieldErrors.title}
+        <p class="mt-2 text-sm text-red-600">{allFieldErrors.title}</p>
+      {/if}
     </div>
 
     <!-- 요약 (선택사항) -->
@@ -80,7 +213,8 @@
         name="excerpt"
         bind:value={excerpt}
         placeholder="게시글 요약을 입력하세요"
-        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
+        autocomplete="off"
+        class="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
       />
     </div>
 
@@ -95,9 +229,20 @@
         bind:value={content}
         rows="15"
         placeholder="게시글 내용을 입력하세요"
-        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none resize-none transition-colors"
+        class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.content ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none resize-none transition-colors"
         required
+        on:input={() => {
+          touchedFields.content = true;
+          validateContent();
+        }}
+        on:blur={() => {
+          touchedFields.content = true;
+          validateContent();
+        }}
       ></textarea>
+      {#if allFieldErrors.content}
+        <p class="mt-2 text-sm text-red-600">{allFieldErrors.content}</p>
+      {/if}
     </div>
 
     {#if !isLoggedIn}
@@ -112,11 +257,28 @@
           name="editPassword"
           bind:value={editPassword}
           placeholder="4자 이상"
-          class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
+          autocomplete="new-password"
+          class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.editPassword ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
           required
           minlength="4"
+          on:input={() => {
+            // 입력 중에도 검사 (빈 값이면 에러 표시 안 함)
+            validatePassword();
+            // 비밀번호가 변경되면 확인 필드도 다시 검사
+            validatePasswordConfirm();
+          }}
+          on:blur={() => {
+            touchedFields.editPassword = true;
+            validatePassword();
+            // blur 시 확인 필드도 다시 검사
+            if (touchedFields.editPasswordConfirm) validatePasswordConfirm();
+          }}
         />
-        <p class="mt-2 text-sm text-gray-500">이 비밀번호는 글 수정/삭제에 필요합니다. 잊어버리면 복구가 어렵습니다.</p>
+        {#if allFieldErrors.editPassword}
+          <p class="mt-2 text-sm text-red-600">{allFieldErrors.editPassword}</p>
+        {:else}
+          <p class="mt-2 text-sm text-gray-500">이 비밀번호는 글 수정/삭제에 필요합니다. 잊어버리면 복구가 어렵습니다.</p>
+        {/if}
       </div>
 
       <div class="mb-8">
@@ -129,10 +291,26 @@
           name="editPasswordConfirm"
           bind:value={editPasswordConfirm}
           placeholder="비밀번호를 다시 입력하세요"
-          class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
+          autocomplete="new-password"
+          class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.editPasswordConfirm ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
           required
           minlength="4"
+          on:input={() => {
+            // 입력 중에도 검사
+            if (!touchedFields.editPasswordConfirm) {
+              touchedFields.editPasswordConfirm = true;
+            }
+            // 즉시 검사 실행
+            validatePasswordConfirm();
+          }}
+          on:blur={() => {
+            touchedFields.editPasswordConfirm = true;
+            validatePasswordConfirm();
+          }}
         />
+        {#if allFieldErrors.editPasswordConfirm}
+          <p class="mt-2 text-sm text-red-600">{allFieldErrors.editPasswordConfirm}</p>
+        {/if}
       </div>
     {/if}
 
@@ -140,13 +318,13 @@
     <div class="flex flex-col sm:flex-row gap-3 sm:justify-end pt-6 border-t border-gray-200">
       <a
         href="/posts"
-        class="inline-flex items-center justify-center px-6 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium ring-1 ring-black/10 shadow-sm hover:shadow"
+        class="inline-flex items-center justify-center px-6 py-3 min-h-[44px] bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium ring-1 ring-black/10 shadow-sm hover:shadow"
       >
         취소
       </a>
       <button
         type="submit"
-        class="inline-flex items-center justify-center px-6 py-3 bg-whiskey-600 text-white rounded-lg hover:bg-whiskey-700 transition-colors font-medium shadow-sm hover:shadow-md"
+        class="inline-flex items-center justify-center px-6 py-3 min-h-[44px] bg-whiskey-600 text-white rounded-lg hover:bg-whiskey-700 transition-colors font-medium shadow-sm hover:shadow-md"
       >
         작성하기
       </button>
