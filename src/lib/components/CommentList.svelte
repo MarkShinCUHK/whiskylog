@@ -1,10 +1,14 @@
-<script>
+<script lang="ts">
   import CommentItem from './CommentItem.svelte';
-  import { createEventDispatcher } from 'svelte';
+  import type { Comment } from '$lib/server/supabase/types';
   
-  export let comments = [];
-
-  const dispatch = createEventDispatcher();
+  let { 
+    comments = [],
+    ondeleted
+  }: {
+    comments?: Comment[];
+    ondeleted?: (id: string) => void;
+  } = $props();
 </script>
 
 <div class="space-y-4">
@@ -12,7 +16,7 @@
     {#each comments as comment}
       <CommentItem
         {comment}
-        on:deleted={(e) => dispatch('deleted', e.detail)}
+        ondeleted={ondeleted}
       />
     {/each}
   {:else}

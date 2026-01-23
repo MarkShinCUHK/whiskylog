@@ -6,13 +6,15 @@
   import CommentForm from '$lib/components/CommentForm.svelte';
   import { showToast } from '$lib/stores/toast';
   
-  export let data;
+  let { data } = $props();
 
   // 댓글 기능 활성화 여부 (나중에 true로 변경하면 댓글 기능 활성화)
   const ENABLE_COMMENTS = false;
 
-  let comments = data.comments || [];
-  $: if (data.comments) comments = data.comments;
+  let comments = $state(data.comments || []);
+  $effect(() => {
+    if (data.comments) comments = data.comments;
+  });
 
   function handleDeleteSubmit(e: Event) {
     if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
@@ -67,16 +69,15 @@
         <h2 class="text-2xl sm:text-3xl font-bold text-whiskey-900 mb-6 tracking-tight">댓글</h2>
         <div class="mb-6">
           <CommentForm
-            on:created={(e) => {
-              if (e?.detail) comments = [...comments, e.detail];
+            oncreated={(comment) => {
+              if (comment) comments = [...comments, comment];
             }}
           />
         </div>
         <div>
           <CommentList
             comments={comments}
-            on:deleted={(e) => {
-              const id = e?.detail;
+            ondeleted={(id) => {
               if (id) comments = comments.filter((c) => c.id !== id);
             }}
           />
@@ -102,7 +103,7 @@
         <form
           method="POST"
           action="?/delete"
-          on:submit|preventDefault={handleDeleteSubmit}
+          onsubmit={(e) => { e.preventDefault(); handleDeleteSubmit(e); }}
           use:enhance={() => {
             return async ({ result, update }) => {
               try {

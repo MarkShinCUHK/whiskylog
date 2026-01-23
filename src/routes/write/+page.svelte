@@ -1,29 +1,31 @@
-<script>
+<script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
   import { showToast } from '$lib/stores/toast';
   
-  export let form;
+  let { form } = $props();
   
-  let title = form?.values?.title || '';
-  let content = form?.values?.content || '';
-  let author = form?.values?.author || '';
-  let error = form?.error || '';
-  let fieldErrors = form?.fieldErrors || {};
-  let editPassword = '';
-  let editPasswordConfirm = '';
+  let title = $state(form?.values?.title || '');
+  let content = $state(form?.values?.content || '');
+  let author = $state(form?.values?.author || '');
+  let error = $state(form?.error || '');
+  let fieldErrors = $state(form?.fieldErrors || {});
+  let editPassword = $state('');
+  let editPasswordConfirm = $state('');
 
   // 클라이언트 사이드 실시간 유효성 검사 (blur 이벤트 후에만 표시)
-  let clientFieldErrors = {};
-  let touchedFields = {}; // blur된 필드만 추적
+  let clientFieldErrors = $state<Record<string, string>>({});
+  let touchedFields = $state<Record<string, boolean>>({}); // blur된 필드만 추적
 
   // form이 업데이트되면 클라이언트 에러 초기화
-  $: if (form) {
-    // 서버에서 에러가 없으면 클라이언트 에러도 초기화
-    if (!form.fieldErrors || Object.keys(form.fieldErrors).length === 0) {
-      clientFieldErrors = {};
+  $effect(() => {
+    if (form) {
+      // 서버에서 에러가 없으면 클라이언트 에러도 초기화
+      if (!form.fieldErrors || Object.keys(form.fieldErrors).length === 0) {
+        clientFieldErrors = {};
+      }
     }
-  }
+  });
 
   function validateTitle() {
     if (touchedFields.title) {
@@ -95,25 +97,35 @@
   }
 
   // 실시간 검사 (입력 중에도 반영)
-  $: if (title !== undefined && touchedFields.title) validateTitle();
-  $: if (content !== undefined && touchedFields.content) validateContent();
+  $effect(() => {
+    if (title !== undefined && touchedFields.title) validateTitle();
+  });
+  $effect(() => {
+    if (content !== undefined && touchedFields.content) validateContent();
+  });
   // 비밀번호는 입력 중에도 검사 (빈 값 제외)
-  $: if (editPassword !== undefined && !isLoggedIn) {
-    validatePassword();
-    // 비밀번호가 변경되면 확인 필드도 다시 검사
-    validatePasswordConfirm();
-  }
+  $effect(() => {
+    if (editPassword !== undefined && !isLoggedIn) {
+      validatePassword();
+      // 비밀번호가 변경되면 확인 필드도 다시 검사
+      validatePasswordConfirm();
+    }
+  });
   // 비밀번호 확인도 입력 중에도 검사 (빈 값 제외)
-  $: if (editPasswordConfirm !== undefined && !isLoggedIn) validatePasswordConfirm();
+  $effect(() => {
+    if (editPasswordConfirm !== undefined && !isLoggedIn) validatePasswordConfirm();
+  });
 
   // 서버 에러와 클라이언트 에러 병합 (서버 에러가 우선)
-  $: allFieldErrors = { ...clientFieldErrors, ...fieldErrors };
+  let allFieldErrors = $derived({ ...clientFieldErrors, ...fieldErrors });
 
-  $: isLoggedIn = !!$page.data?.user;
-  $: if (isLoggedIn) {
-    // 로그인 사용자는 닉네임을 작성자명으로 고정 (서버에서도 강제함)
-    author = $page.data.user.nickname || $page.data.user.email || author;
-  }
+  let isLoggedIn = $derived(!!$page.data?.user);
+  $effect(() => {
+    if (isLoggedIn) {
+      // 로그인 사용자는 닉네임을 작성자명으로 고정 (서버에서도 강제함)
+      author = $page.data.user.nickname || $page.data.user.email || author;
+    }
+  });
 </script>
 
 <svelte:head>

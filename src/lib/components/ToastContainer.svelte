@@ -1,8 +1,8 @@
-<script>
+<script lang="ts">
   import Toast from './Toast.svelte';
   import { toastStore } from '$lib/stores/toast';
 
-  function handleClose(id) {
+  function handleClose(id: string): void {
     toastStore.remove(id);
   }
 </script>

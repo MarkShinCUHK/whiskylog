@@ -1,7 +1,7 @@
-<script>
-  export let initialQuery = '';
+<script lang="ts">
+  let { initialQuery = '' }: { initialQuery?: string } = $props();
 
-  let q = initialQuery;
+  let q = $state(initialQuery);
 </script>
 
 <form action="/search" method="GET" class="w-full">

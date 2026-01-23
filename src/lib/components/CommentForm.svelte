@@ -1,29 +1,34 @@
-<script>
+<script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
-  import { createEventDispatcher } from 'svelte';
   import { showToast } from '$lib/stores/toast';
+  import type { Comment } from '$lib/server/supabase/types';
   
-  export let form = {};
+  let { 
+    form = {},
+    oncreated
+  }: {
+    form?: any;
+    oncreated?: (comment: Comment) => void;
+  } = $props();
   
-  let content = form?.values?.content || '';
-  let error = form?.error || '';
+  let content = $state(form?.values?.content || '');
+  let error = $state(form?.error || '');
   
   // 익명 사용자도 댓글 작성 가능
 
-  const dispatch = createEventDispatcher();
-  let pending = false;
+  let pending = $state(false);
 
   function enhanceCreateComment() {
     pending = true;
     const prev = content;
 
-    return async ({ result }) => {
+    return async ({ result }: { result: any }) => {
       pending = false;
 
       if (result.type === 'success') {
         const created = result.data?.comment;
-        if (created) dispatch('created', created);
+        if (created) oncreated?.(created);
         content = '';
         error = '';
         showToast('댓글이 작성되었습니다.', 'success');

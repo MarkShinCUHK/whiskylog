@@ -1,6 +1,6 @@
 # DramLog 개발 가이드라인
 
-이 문서는 SvelteKit + Tailwind CSS 기반의 DramLog (위스키 리뷰/게시글 커뮤니티) 개발 시 따라야 할 상세 가이드라인을 정의합니다.
+이 문서는 SvelteKit (Svelte 5) + Tailwind CSS 기반의 DramLog (위스키 리뷰/게시글 커뮤니티) 개발 시 따라야 할 상세 가이드라인을 정의합니다.
 
 ## 📋 목차
 1. [프로젝트 개요](#프로젝트-개요)
@@ -40,7 +40,8 @@
 - ✅ 게시글 CRUD 기능 구현 (생성, 조회, 목록)
 - ✅ Supabase 쿼리 계층 구조 구축 (`src/lib/server/supabase/queries/posts.ts`)
 - ✅ 프로젝트 이름 DramLog로 통일
-- ✅ 날짜 2026-01-22 기준으로 업데이트
+- ✅ 날짜 2026-01-23 기준으로 업데이트
+- ✅ Svelte 5로 업그레이드 완료 (Runes 모드 마이그레이션 완료)
 
 ---
 
@@ -48,6 +49,7 @@
 
 ### 핵심 스택
 - **SvelteKit**: 프레임워크 (SSR 지원)
+- **Svelte 5**: 프론트엔드 프레임워크 (Runes 모드 사용)
 - **Tailwind CSS**: 유틸리티 기반 CSS 프레임워크
 - **Supabase**: PostgreSQL 기반 BaaS (Backend as a Service)
   - 데이터베이스: PostgreSQL (Supabase 호스팅)
@@ -226,20 +228,27 @@ src/lib/
 ├── components/
 │   ├── Header.svelte      # 헤더 컴포넌트 ✅
 │   ├── Footer.svelte     # 푸터 컴포넌트 ✅
-│   └── PostCard.svelte   # 게시글 카드 컴포넌트 ✅
+│   ├── PostCard.svelte   # 게시글 카드 컴포넌트 ✅
 │   ├── SearchBar.svelte  # 검색바 ✅
 │   ├── Pagination.svelte # 페이지네이션 ✅
 │   ├── Skeleton.svelte   # 로딩 스켈레톤 ✅
 │   ├── LikeButton.svelte # 좋아요 버튼 ✅
-│   ├── CommentForm.svelte
-│   ├── CommentList.svelte
-│   └── CommentItem.svelte
+│   ├── CommentForm.svelte # 댓글 작성 폼 ✅
+│   ├── CommentList.svelte # 댓글 목록 ✅
+│   ├── CommentItem.svelte # 댓글 아이템 ✅
+│   ├── Toast.svelte      # 토스트 알림 ✅
+│   └── ToastContainer.svelte # 토스트 컨테이너 ✅
+├── stores/
+│   └── toast.ts          # 토스트 알림 store ✅
 └── server/
     └── supabase/
         ├── client.ts     # Supabase 클라이언트 생성 ✅
+        ├── auth.ts       # 인증 헬퍼 ✅
         ├── types.ts      # 타입 정의 ✅
         └── queries/
-            └── posts.ts   # 게시글 쿼리 함수 ✅
+            ├── posts.ts   # 게시글 쿼리 함수 ✅
+            ├── comments.ts # 댓글 쿼리 함수 ✅
+            └── likes.ts   # 좋아요 쿼리 함수 ✅
 ```
 
 ### 컴포넌트 예시
@@ -369,36 +378,50 @@ Tailwind 기본 간격 사용:
 
 ## 코딩 컨벤션
 
-### Svelte 컴포넌트 구조
+### Svelte 5 컴포넌트 구조 (Runes 모드)
 
 ```svelte
-<script>
+<script lang="ts">
   // 1. Imports
   import Component from '$lib/components/Component.svelte';
   
-  // 2. Props
-  export let prop1;
-  export let prop2 = 'default';
+  // 2. Props (Svelte 5 Runes)
+  let { prop1, prop2 = 'default' }: { prop1: string; prop2?: string } = $props();
   
-  // 3. Reactive statements
-  $: computed = prop1 * 2;
+  // 3. State (반응성 변수)
+  let count = $state(0);
   
-  // 4. Functions
+  // 4. Derived (파생 값)
+  let computed = $derived(prop1.length * 2);
+  
+  // 5. Effects (사이드 이펙트)
+  $effect(() => {
+    console.log('prop1 changed:', prop1);
+  });
+  
+  // 6. Functions
   function handleClick() {
-    // ...
+    count++;
   }
 </script>
 
-<!-- 5. Markup -->
+<!-- 7. Markup -->
 <div class="...">
   <!-- ... -->
 </div>
 
-<!-- 6. Styles (최소화) -->
+<!-- 8. Styles (최소화) -->
 <style>
   /* Tailwind로 불가능한 경우만 */
 </style>
 ```
+
+**Svelte 5 마이그레이션 완료 (2026-01-23)**
+- 모든 컴포넌트가 Runes 모드로 마이그레이션 완료
+- `export let` → `let { prop } = $props()`
+- `$: computed = ...` → `let computed = $derived(...)`
+- `$: { ... }` → `$effect(() => { ... })`
+- `createEventDispatcher()` → 함수 props (`let { onevent } = $props()`)
 
 ### 네이밍 규칙
 
@@ -624,7 +647,7 @@ Tailwind 기본 간격 사용:
      - 로그인 사용자만 좋아요 가능
      - 서버 액션: `toggleLike` (`/posts/[id]/+page.server.ts`)
 
-### MVP 6단계: UI/UX 개선 (진행 중 🔄)
+### MVP 6단계: UI/UX 개선 (완료 ✅)
 **목표**: 사용자 경험 향상 및 반응형 최적화
 
 1. ✅ **모던 UI 리프레시** (완료)
@@ -648,7 +671,7 @@ Tailwind 기본 간격 사용:
    - ✅ **푸터 정리** (`src/lib/components/Footer.svelte`):
      - 밝은 반투명 톤 + 얇은 구분선
 
-2. 🔄 **반응형 디자인 세부 개선** (진행 예정)
+2. ✅ **반응형 디자인 세부 개선** (완료)
    - **모바일 최적화** (< 640px):
      - Header: 햄버거 메뉴 또는 간소화된 네비게이션
      - 게시글 목록: 단일 컬럼, 카드 레이아웃
@@ -659,9 +682,7 @@ Tailwind 기본 간격 사용:
    - **데스크톱 레이아웃** (> 1024px):
      - 최대 너비 제한 (예: max-w-7xl)
      - 최적화된 여백 및 간격
-   - **Tailwind 반응형 클래스 활용**:
-     - `sm:`, `md:`, `lg:`, `xl:` 브레이크포인트 사용
-     - Mobile First 접근
+   - **Tailwind 반응형 클래스 활용**: `sm:`, `md:`, `lg:`, `xl:` 브레이크포인트 사용, Mobile First 접근
 
 2. **사용자 경험 개선**
    - **로딩 상태**:
@@ -701,27 +722,58 @@ Tailwind 기본 간격 사용:
        - ✅ `showToast(message, type)` 함수로 간편 사용
        - ✅ 글 작성/수정/삭제 성공 시 토스트 메시지 표시
    - **페이지네이션**:
-     - **게시글 목록 페이지네이션**:
-       - 페이지당 게시글 수 제한 (예: 10개)
-       - 이전/다음 페이지 버튼
-       - 페이지 번호 표시 (선택사항)
-     - **쿼리 함수 업데이트**:
-       - `listPosts(limit?: number, offset?: number)`: 페이지네이션 지원
-       - `getPostCount()`: 전체 게시글 개수 조회
-     - **컴포넌트**: `Pagination.svelte`
+     - ✅ **게시글 목록 페이지네이션**: 12개/페이지 (`/posts`, `/my-posts`, `/search`)
+     - ✅ **쿼리 함수**: `listPosts(limit, offset)`, `getPostCount()` 등
+     - ✅ **컴포넌트**: `Pagination.svelte`
 
 3. **성능 최적화**
    - **이미지 최적화** (향후 이미지 업로드 기능 추가 시):
      - Lazy loading
      - WebP 형식 지원
      - 썸네일 생성
-   - **코드 스플리팅**:
-     - SvelteKit의 자동 코드 스플리팅 활용
-     - 라우트별 코드 분리
-   - **DB 최적화**:
-     - 인덱스 추가 (이미 일부 구현됨)
-     - 쿼리 최적화
-     - 연결 풀링 (Supabase에서 자동 관리)
+   - **코드 스플리팅**: SvelteKit의 자동 코드 스플리팅 활용
+   - **DB 최적화**: 인덱스 추가, 쿼리 최적화, 연결 풀링 (Supabase에서 자동 관리)
+
+### MVP 7단계: Supabase Anonymous Auth + RLS 설정 (완료 ✅)
+**목표**: 익명 사용자도 세션을 가지도록 하고, RLS 정책으로 보안 강화
+
+1. ✅ **Supabase Anonymous Auth 구현**
+   - 익명 사용자도 세션을 가지도록 `createAnonymousSession()` 함수 구현
+   - `getUserOrCreateAnonymous()` 함수로 세션이 없으면 자동으로 익명 세션 생성
+   - 익명 사용자는 `isAnonymous: true`로 식별
+   - 익명 사용자는 헤더에서 "내 글" 메뉴가 보이지 않도록 처리
+
+2. ✅ **RLS (Row Level Security) 정책 설정**
+   - `posts`, `comments`, `likes` 테이블에 RLS 활성화
+   - 읽기 정책: 모든 사용자 읽기 가능
+   - 쓰기 정책: 인증된 사용자(익명 포함)만 작성 가능
+   - 수정/삭제 정책: 작성자만 수정/삭제 가능 (`auth.uid() = user_id`)
+   - 익명 글은 `is_anonymous` 컬럼으로 식별
+   - RLS 정책: `is_anonymous = true`인 경우 업데이트/삭제 허용
+
+3. ✅ **세션 토큰 기반 클라이언트 생성**
+   - `createSupabaseClientWithSession()` 함수 구현
+   - RLS 정책에서 `auth.uid()`를 사용할 수 있도록 세션 토큰 전달
+   - `SessionTokens` 객체를 받아서 Authorization 헤더에 추가
+
+4. ✅ **익명 글 관리 개선**
+   - `is_anonymous` 컬럼 추가하여 익명 글 명확히 식별
+   - 익명 글 작성 시 `is_anonymous: true` 설정
+   - 익명 글 수정/삭제 시 비밀번호 검증 로직 개선
+   - 로그인 상태에서는 익명 글 수정/삭제 불가 정책 적용
+
+5. ✅ **익명 사용자 회원가입 시 글 전환 기능**
+   - `convertAnonymousPostsToUserPosts()` 함수 구현
+   - 익명 사용자 회원가입 시 기존 익명 글을 회원 글로 자동 전환
+   - `updateUser()`로 익명 사용자 ID 유지 시도 (실패 시 `signUp()`으로 폴백)
+   - 세션 만료 감지 로직 추가
+   - 회원가입 완료 후 로그인 페이지에 익명 글 전환 정보 표시
+
+6. ✅ **버그 수정**
+   - `toast.ts`의 `remove` 함수 클로저 문제 해결
+   - `use:enhance`의 `result` null 체크 추가
+   - `verifyEditPassword` 함수 타입 안전성 개선
+   - `createSupabaseClientWithSession` 함수 시그니처 수정
 
 ### 향후 추가 예정
 - 이미지 업로드 (로컬 스토리지 또는 클라우드 스토리지)

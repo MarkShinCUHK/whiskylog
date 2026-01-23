@@ -1,13 +1,13 @@
-<script>
+<script lang="ts">
   import PostCard from '$lib/components/PostCard.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { showToast } from '$lib/stores/toast';
   
-  export let data;
+  let { data } = $props();
 
-  function hrefForPage(p) {
+  function hrefForPage(p: number): string {
     const url = new URL($page.url);
     url.searchParams.set('page', p.toString());
     return url.pathname + url.search;

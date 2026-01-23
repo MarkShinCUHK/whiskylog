@@ -1,17 +1,23 @@
-<script>
-  export let page = 1;
-  export let totalPages = 1;
-  export let hrefForPage;
+<script lang="ts">
+  let { 
+    page = 1, 
+    totalPages = 1,
+    hrefForPage 
+  }: {
+    page?: number;
+    totalPages?: number;
+    hrefForPage: (p: number) => string;
+  } = $props();
 
-  $: safeTotalPages = Math.max(1, totalPages || 1);
-  $: safePage = Math.min(Math.max(1, page || 1), safeTotalPages);
+  let safeTotalPages = $derived(Math.max(1, totalPages || 1));
+  let safePage = $derived(Math.min(Math.max(1, page || 1), safeTotalPages));
 
-  $: pages = (() => {
+  let pages = $derived((() => {
     const maxButtons = 7;
     if (safeTotalPages <= maxButtons) {
       return Array.from({ length: safeTotalPages }, (_, i) => i + 1);
     }
-    const out = [];
+    const out: (number | string)[] = [];
     out.push(1);
 
     const start = Math.max(2, safePage - 1);
@@ -23,7 +29,7 @@
 
     out.push(safeTotalPages);
     return out;
-  })();
+  })());
 </script>
 
 <nav class="mt-10 flex items-center justify-center gap-2" aria-label="Pagination">

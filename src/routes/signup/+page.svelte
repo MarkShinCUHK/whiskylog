@@ -1,14 +1,16 @@
-<script>
-  export let form;
+<script lang="ts">
+  let { form } = $props();
 
-  let email = '';
-  let nickname = '';
-  let error = '';
+  let email = $state('');
+  let nickname = $state('');
+  let error = $state('');
 
   // 서버 액션 응답(form)이 바뀔 때마다 입력값/에러를 갱신
-  $: email = form?.values?.email || email;
-  $: nickname = form?.values?.nickname || nickname;
-  $: error = form?.error || '';
+  $effect(() => {
+    if (form?.values?.email) email = form.values.email;
+    if (form?.values?.nickname) nickname = form.values.nickname;
+    if (form?.error) error = form.error;
+  });
 </script>
 
 <svelte:head>

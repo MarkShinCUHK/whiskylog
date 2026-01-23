@@ -1,24 +1,38 @@
-<script>
+<script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
-  import { createEventDispatcher } from 'svelte';
+  import type { Comment } from '$lib/server/supabase/types';
   
-  export let comment;
+  let { 
+    comment,
+    ondeleted
+  }: {
+    comment: Comment;
+    ondeleted?: (id: string) => void;
+  } = $props();
   
-  $: isMyComment = $page.data?.user?.id === comment.userId;
-  $: authorDisplay = comment.authorName || comment.authorEmail || 
-    (isMyComment ? ($page.data?.user?.nickname || $page.data?.user?.email?.split('@')[0] || '나') : '사용자');
+  let isMyComment = $derived($page.data?.user?.id === comment.userId);
+  let authorDisplay = $derived(
+    comment.authorName || comment.authorEmail || 
+    (isMyComment ? ($page.data?.user?.nickname || $page.data?.user?.email?.split('@')[0] || '나') : '사용자')
+  );
 
-  const dispatch = createEventDispatcher();
-  let pendingDelete = false;
+  let pendingDelete = $state(false);
+
+  function handleDeleteClick(e: MouseEvent) {
+    if (!confirm('댓글을 삭제하시겠습니까?')) {
+      e.preventDefault();
+      return;
+    }
+  }
 
   function enhanceDeleteComment() {
     pendingDelete = true;
-    return async ({ result }) => {
+    return async ({ result }: { result: any }) => {
       pendingDelete = false;
       if (result.type === 'success') {
         const id = result.data?.deletedId || comment.id;
-        dispatch('deleted', id);
+        ondeleted?.(id);
         return;
       }
     };
@@ -42,7 +56,7 @@
         <button
           type="submit"
           class="text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          onclick="return confirm('댓글을 삭제하시겠습니까?')"
+          onclick={handleDeleteClick}
           disabled={pendingDelete}
         >
           삭제

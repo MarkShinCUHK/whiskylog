@@ -1,21 +1,20 @@
-<script>
+<script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
   import { showToast } from '$lib/stores/toast';
   
-  export let data;
-  export let form;
+  let { data, form } = $props();
   
-  let title = form?.values?.title || data.post?.title || '';
-  let content = form?.values?.content || data.post?.content || '';
-  let author = form?.values?.author || data.post?.author || '';
-  let error = form?.error || '';
-  let fieldErrors = form?.fieldErrors || {};
-  let editPassword = '';
+  let title = $state(form?.values?.title || data.post?.title || '');
+  let content = $state(form?.values?.content || data.post?.content || '');
+  let author = $state(form?.values?.author || data.post?.author || '');
+  let error = $state(form?.error || '');
+  let fieldErrors = $state(form?.fieldErrors || {});
+  let editPassword = $state('');
 
   // 클라이언트 사이드 실시간 유효성 검사
-  let clientFieldErrors = {};
-  let touchedFields = {}; // blur된 필드만 추적
+  let clientFieldErrors = $state<Record<string, string>>({});
+  let touchedFields = $state<Record<string, boolean>>({}); // blur된 필드만 추적
 
   function validateTitle() {
     if (touchedFields.title) {
@@ -54,19 +53,27 @@
   }
 
   // 실시간 검사 (입력 중에도 반영)
-  $: if (title !== undefined && touchedFields.title) validateTitle();
-  $: if (content !== undefined && touchedFields.content) validateContent();
-  $: if (editPassword !== undefined && data.post?.isAnonymous) {
-    validatePassword();
-  }
+  $effect(() => {
+    if (title !== undefined && touchedFields.title) validateTitle();
+  });
+  $effect(() => {
+    if (content !== undefined && touchedFields.content) validateContent();
+  });
+  $effect(() => {
+    if (editPassword !== undefined && data.post?.isAnonymous) {
+      validatePassword();
+    }
+  });
 
   // 서버 에러와 클라이언트 에러 병합
-  $: allFieldErrors = { ...fieldErrors, ...clientFieldErrors };
+  let allFieldErrors = $derived({ ...fieldErrors, ...clientFieldErrors });
 
-  $: isLoggedIn = !!$page.data?.user;
-  $: if (isLoggedIn && $page.data.user) {
-    author = $page.data.user.nickname || $page.data.user.email || author;
-  }
+  let isLoggedIn = $derived(!!$page.data?.user);
+  $effect(() => {
+    if (isLoggedIn && $page.data.user) {
+      author = $page.data.user.nickname || $page.data.user.email || author;
+    }
+  });
 </script>
 
 <svelte:head>

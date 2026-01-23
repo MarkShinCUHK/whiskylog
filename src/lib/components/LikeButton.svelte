@@ -1,14 +1,20 @@
-<script>
+<script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
   
-  export let postId;
-  export let likeCount = 0;
-  export let isLiked = false;
+  let { 
+    postId,
+    likeCount = 0,
+    isLiked = false
+  }: {
+    postId: string;
+    likeCount?: number;
+    isLiked?: boolean;
+  } = $props();
   
   // 익명 사용자도 좋아요 가능
 
-  let pending = false;
+  let pending = $state(false);
 
   function enhanceToggleLike() {
     const prevLiked = isLiked;
@@ -19,7 +25,7 @@
     isLiked = !prevLiked;
     likeCount = Math.max(0, prevCount + (isLiked ? 1 : -1));
 
-    return async ({ result }) => {
+    return async ({ result }: { result: any }) => {
       pending = false;
 
       if (result.type === 'success') {

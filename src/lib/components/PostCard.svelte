@@ -1,5 +1,7 @@
-<script>
-  export let post;
+<script lang="ts">
+  import type { Post } from '$lib/server/supabase/types';
+
+  let { post }: { post: Post } = $props();
 
   const gradients = [
     'from-whiskey-700 via-whiskey-600 to-whiskey-500',
@@ -8,14 +10,14 @@
     'from-whiskey-700 via-whiskey-500 to-whiskey-300'
   ];
 
-  function pickGradient(id) {
+  function pickGradient(id: string | undefined): string {
     const str = String(id ?? '');
     const code = str.length ? str.charCodeAt(str.length - 1) : 0;
     return gradients[code % gradients.length];
   }
 
-  $: gradientClass = pickGradient(post?.id);
-  $: excerptText = post?.content || '';
+  let gradientClass = $derived(pickGradient(post?.id));
+  let excerptText = $derived(post?.content || '');
 </script>
 
 <article class="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg">

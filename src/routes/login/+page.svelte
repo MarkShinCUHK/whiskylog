@@ -1,19 +1,21 @@
-<script>
+<script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
   
-  export let form;
+  let { form } = $props();
 
-  let email = '';
-  let password = '';
-  let error = '';
+  let email = $state('');
+  let password = $state('');
+  let error = $state('');
   
   // URL 쿼리 파라미터에서 성공 메시지 확인
-  $: successMessage = $page.url.searchParams.get('success');
+  let successMessage = $derived($page.url.searchParams.get('success'));
 
   // 서버 액션 응답(form)이 바뀔 때마다 입력값/에러를 갱신
-  $: email = form?.values?.email || email;
-  $: error = form?.error || '';
+  $effect(() => {
+    if (form?.values?.email) email = form.values.email;
+    if (form?.error) error = form.error;
+  });
 </script>
 
 <svelte:head>

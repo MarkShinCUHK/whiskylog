@@ -1,6 +1,6 @@
 # DramLog
 
-SvelteKit + Tailwind CSS 기반의 위스키 리뷰 및 게시글 커뮤니티 웹사이트입니다.
+SvelteKit (Svelte 5) + Tailwind CSS 기반의 위스키 리뷰 및 게시글 커뮤니티 웹사이트입니다.
 
 ## 🚀 시작하기
 
@@ -98,7 +98,11 @@ dramlog/
 │   │   │   ├── LikeButton.svelte
 │   │   │   ├── CommentForm.svelte
 │   │   │   ├── CommentList.svelte
-│   │   │   └── CommentItem.svelte
+│   │   │   ├── CommentItem.svelte
+│   │   │   ├── Toast.svelte
+│   │   │   └── ToastContainer.svelte
+│   │   └── stores/              # 상태 관리
+│   │       └── toast.ts         # 토스트 알림 store
 │   │   └── server/              # 서버 전용 코드
 │   │       └── supabase/
 │   │           ├── client.ts   # Supabase 클라이언트 생성
@@ -190,6 +194,17 @@ dramlog/
     - 익명 글도 익명 세션의 `user_id`를 가지지만, 토큰 만료 시 `user_id`가 바뀔 수 있으므로 비밀번호로만 관리
     - 로그아웃 상태에서만 비밀번호로 수정/삭제 가능
 
+#### MVP 7단계: Supabase Anonymous Auth + RLS 설정 (완료 ✅)
+- ✅ Supabase Anonymous Auth 구현 (익명 사용자도 세션을 가지도록 함)
+- ✅ RLS (Row Level Security) 정책 설정 완료
+  - 읽기: 모든 사용자(익명 포함) 읽기 가능
+  - 쓰기: 모든 사용자(익명 포함) 작성 가능
+  - 수정/삭제: 로그인 글은 작성자만, 익명 글은 RLS에서 허용하되 서버에서 비밀번호 검증으로 보안 보장
+  - 익명 글은 user_id와 무관하게 비밀번호로만 수정/삭제 가능 (토큰 만료 시 user_id가 바뀔 수 있음)
+- ✅ 세션 토큰 기반 클라이언트 생성 (`createSupabaseClientWithSession()`)
+- ✅ 익명 글 관리 개선 (`is_anonymous` 컬럼 추가)
+- ✅ 익명 사용자 회원가입 시 글 전환 기능 (`convertAnonymousPostsToUserPosts()`)
+
 ### 향후 추가 예정
 - 이미지 업로드 (Supabase Storage)
 - 사용자 프로필 페이지
@@ -200,6 +215,7 @@ dramlog/
 ## 🛠 기술 스택
 
 - **SvelteKit**: 프레임워크 (SSR 지원)
+- **Svelte 5**: 프론트엔드 프레임워크 (Runes 모드 사용)
 - **Tailwind CSS**: 유틸리티 기반 CSS
 - **Supabase**: PostgreSQL 기반 BaaS
   - 데이터베이스: PostgreSQL (Supabase 호스팅)
