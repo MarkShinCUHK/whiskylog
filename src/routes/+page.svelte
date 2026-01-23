@@ -1,9 +1,10 @@
 <script>
   import { invalidateAll } from '$app/navigation';
   import { page } from '$app/stores';
+  import { browser } from '$app/environment';
 
-  // 로그아웃 후 리다이렉트 시 데이터 갱신
-  $: if ($page.url.searchParams.get('logout') === '1') {
+  // 로그아웃 후 리다이렉트 시 데이터 갱신 (브라우저에서만 실행)
+  $: if (browser && $page.url.searchParams.get('logout') === '1') {
     invalidateAll();
     // URL에서 쿼리 파라미터 제거 (히스토리 정리)
     window.history.replaceState({}, '', '/');

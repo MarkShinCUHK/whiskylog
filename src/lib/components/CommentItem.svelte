@@ -37,27 +37,17 @@
       {/if}
     </div>
     {#if isMyComment}
-      <div class="flex gap-3">
+      <form method="POST" action="?/deleteComment" use:enhance={enhanceDeleteComment}>
+        <input type="hidden" name="commentId" value={comment.id} />
         <button
-          class="text-xs text-gray-500 hover:text-gray-700 transition-colors"
-          on:click={() => {
-            // 수정 기능은 향후 추가
-          }}
+          type="submit"
+          class="text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          onclick="return confirm('댓글을 삭제하시겠습니까?')"
+          disabled={pendingDelete}
         >
-          수정
+          삭제
         </button>
-        <form method="POST" action="?/deleteComment" use:enhance={enhanceDeleteComment}>
-          <input type="hidden" name="commentId" value={comment.id} />
-          <button
-            type="submit"
-            class="text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            onclick="return confirm('댓글을 삭제하시겠습니까?')"
-            disabled={pendingDelete}
-          >
-            삭제
-          </button>
-        </form>
-      </div>
+      </form>
     {/if}
   </div>
   <p class="text-gray-700 whitespace-pre-line leading-relaxed">{comment.content}</p>

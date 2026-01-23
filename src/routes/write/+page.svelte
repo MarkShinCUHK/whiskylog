@@ -8,7 +8,6 @@
   let title = form?.values?.title || '';
   let content = form?.values?.content || '';
   let author = form?.values?.author || '';
-  let excerpt = form?.values?.excerpt || '';
   let error = form?.error || '';
   let fieldErrors = form?.fieldErrors || {};
   let editPassword = '';
@@ -200,22 +199,6 @@
       {#if allFieldErrors.title}
         <p class="mt-2 text-sm text-red-600">{allFieldErrors.title}</p>
       {/if}
-    </div>
-
-    <!-- 요약 (선택사항) -->
-    <div class="mb-6">
-      <label for="excerpt" class="block text-sm font-medium text-gray-700 mb-2">
-        요약 (선택사항)
-      </label>
-      <input
-        type="text"
-        id="excerpt"
-        name="excerpt"
-        bind:value={excerpt}
-        placeholder="게시글 요약을 입력하세요"
-        autocomplete="off"
-        class="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
-      />
     </div>
 
     <!-- 내용 -->

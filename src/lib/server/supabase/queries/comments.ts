@@ -1,5 +1,6 @@
-import { createSupabaseClient } from '../client.js';
+import { createSupabaseClient, createSupabaseClientWithSession } from '../client.js';
 import type { Comment, CommentRow } from '../types.js';
+import type { SessionTokens } from '../auth.js';
 
 /**
  * Supabase row를 Comment 타입으로 변환
@@ -30,9 +31,11 @@ function mapRowToComment(row: CommentRow): Comment {
 /**
  * 게시글의 댓글 목록 조회
  */
-export async function listComments(postId: string): Promise<Comment[]> {
+export async function listComments(postId: string, sessionTokens?: SessionTokens): Promise<Comment[]> {
   try {
-    const supabase = createSupabaseClient();
+    const supabase = sessionTokens
+      ? createSupabaseClientWithSession(sessionTokens)
+      : createSupabaseClient();
     
     const { data, error } = await supabase
       .from('comments')
@@ -59,14 +62,18 @@ export async function listComments(postId: string): Promise<Comment[]> {
 
 /**
  * 댓글 작성
+ * 익명 사용자도 댓글 작성 가능 (익명 세션 필요)
  */
 export async function createComment(
   postId: string,
   content: string,
-  userId: string
+  userId: string,
+  sessionTokens?: SessionTokens
 ): Promise<Comment> {
   try {
-    const supabase = createSupabaseClient();
+    const supabase = sessionTokens
+      ? createSupabaseClientWithSession(sessionTokens)
+      : createSupabaseClient();
 
     if (!content || content.trim().length === 0) {
       throw new Error('댓글 내용을 입력해주세요.');
@@ -104,10 +111,13 @@ export async function createComment(
 export async function updateComment(
   commentId: string,
   content: string,
-  userId: string
+  userId: string,
+  sessionTokens?: SessionTokens
 ): Promise<Comment> {
   try {
-    const supabase = createSupabaseClient();
+    const supabase = sessionTokens
+      ? createSupabaseClientWithSession(sessionTokens)
+      : createSupabaseClient();
 
     if (!content || content.trim().length === 0) {
       throw new Error('댓글 내용을 입력해주세요.');
@@ -157,9 +167,15 @@ export async function updateComment(
 /**
  * 댓글 삭제
  */
-export async function deleteComment(commentId: string, userId: string): Promise<void> {
+export async function deleteComment(
+  commentId: string,
+  userId: string,
+  sessionTokens?: SessionTokens
+): Promise<void> {
   try {
-    const supabase = createSupabaseClient();
+    const supabase = sessionTokens
+      ? createSupabaseClientWithSession(sessionTokens)
+      : createSupabaseClient();
 
     // 본인 댓글인지 확인
     const { data: existingComment, error: checkError } = await supabase

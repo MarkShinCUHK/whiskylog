@@ -328,6 +328,11 @@ export async function getMyPostCount(userId: string): Promise<number> {
 
 /**
  * 게시글 수정
+ * 
+ * 보안 정책:
+ * - 익명 글(is_anonymous = true): user_id와 무관하게 비밀번호로만 수정 가능
+ *   (토큰 만료 시 user_id가 바뀔 수 있으므로 user_id 기반 권한 검사 불가)
+ * - 로그인 글(is_anonymous = false): 작성자(user_id)만 수정 가능 (비밀번호 불필요)
  */
 export async function updatePost(
   id: string,
@@ -357,26 +362,31 @@ export async function updatePost(
       throw authError;
     }
 
+    if (!authRow) {
+      throw new Error('게시글을 찾을 수 없습니다.');
+    }
+
     // 익명 글 판단: is_anonymous 컬럼 사용
-    const isAnonymousPost = authRow?.is_anonymous ?? false;
+    const isAnonymousPost = authRow.is_anonymous ?? false;
     
     if (isAnonymousPost) {
-      // 익명 글: 비밀번호 검증
+      // 익명 글: user_id와 무관하게 비밀번호로만 수정 가능
       if (!auth.editPassword) {
         throw new Error('비밀번호를 입력해주세요.');
       }
 
-      if (!authRow?.edit_password_hash) {
+      if (!authRow.edit_password_hash) {
         throw new Error('이 게시글은 비밀번호로 수정할 수 없습니다.');
       }
 
+      // 비밀번호 검증 (timing-safe 비교)
       const ok = verifyEditPassword(auth.editPassword, authRow.edit_password_hash);
       if (!ok) {
         throw new Error('비밀번호가 일치하지 않습니다.');
       }
     } else {
-      // 로그인 글: user_id로 소유권 검증
-      if (!authRow?.user_id) {
+      // 로그인 글: user_id로 소유권 검증 (비밀번호 불필요)
+      if (!authRow.user_id) {
         throw new Error('이 게시글은 수정할 수 없습니다.');
       }
       if (!auth.userId) {
@@ -422,6 +432,11 @@ export async function updatePost(
 
 /**
  * 게시글 삭제
+ * 
+ * 보안 정책:
+ * - 익명 글(is_anonymous = true): user_id와 무관하게 비밀번호로만 삭제 가능
+ *   (토큰 만료 시 user_id가 바뀔 수 있으므로 user_id 기반 권한 검사 불가)
+ * - 로그인 글(is_anonymous = false): 작성자(user_id)만 삭제 가능 (비밀번호 불필요)
  */
 export async function deletePost(
   id: string,
@@ -447,22 +462,31 @@ export async function deletePost(
       throw authError;
     }
 
+    if (!authRow) {
+      throw new Error('게시글을 찾을 수 없습니다.');
+    }
+
     // 익명 글 판단: is_anonymous 컬럼 사용
-    const isAnonymousPost = authRow?.is_anonymous ?? false;
+    const isAnonymousPost = authRow.is_anonymous ?? false;
     
     if (isAnonymousPost) {
-      // 익명 글: 비밀번호 검증
+      // 익명 글: user_id와 무관하게 비밀번호로만 삭제 가능
       if (!auth.editPassword) {
         throw new Error('비밀번호를 입력해주세요.');
       }
 
+      if (!authRow.edit_password_hash) {
+        throw new Error('이 게시글은 비밀번호로 삭제할 수 없습니다.');
+      }
+
+      // 비밀번호 검증 (timing-safe 비교)
       const ok = verifyEditPassword(auth.editPassword, authRow.edit_password_hash);
       if (!ok) {
         throw new Error('비밀번호가 일치하지 않습니다.');
       }
     } else {
-      // 로그인 글: user_id로 소유권 검증
-      if (!authRow?.user_id) {
+      // 로그인 글: user_id로 소유권 검증 (비밀번호 불필요)
+      if (!authRow.user_id) {
         throw new Error('이 게시글은 삭제할 수 없습니다.');
       }
       if (!auth.userId) {

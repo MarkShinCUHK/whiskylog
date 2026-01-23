@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
   import LikeButton from '$lib/components/LikeButton.svelte';
@@ -8,8 +8,19 @@
   
   export let data;
 
+  // 댓글 기능 활성화 여부 (나중에 true로 변경하면 댓글 기능 활성화)
+  const ENABLE_COMMENTS = false;
+
   let comments = data.comments || [];
   $: if (data.comments) comments = data.comments;
+
+  function handleDeleteSubmit(e: Event) {
+    if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
+      e.preventDefault();
+      return;
+    }
+    // confirm이 true이면 폼 제출 진행 (use:enhance가 처리)
+  }
 </script>
 
 <svelte:head>
@@ -50,26 +61,28 @@
       </div>
     </div>
 
-    <!-- 댓글 섹션 -->
-    <section class="mb-12">
-      <h2 class="text-2xl sm:text-3xl font-bold text-whiskey-900 mb-6 tracking-tight">댓글</h2>
-      <div class="mb-6">
-        <CommentForm
-          on:created={(e) => {
-            if (e?.detail) comments = [...comments, e.detail];
-          }}
-        />
-      </div>
-      <div>
-        <CommentList
-          comments={comments}
-          on:deleted={(e) => {
-            const id = e?.detail;
-            if (id) comments = comments.filter((c) => c.id !== id);
-          }}
-        />
-      </div>
-    </section>
+    <!-- 댓글 섹션 (ENABLE_COMMENTS = true로 설정하면 활성화) -->
+    {#if ENABLE_COMMENTS}
+      <section class="mb-12">
+        <h2 class="text-2xl sm:text-3xl font-bold text-whiskey-900 mb-6 tracking-tight">댓글</h2>
+        <div class="mb-6">
+          <CommentForm
+            on:created={(e) => {
+              if (e?.detail) comments = [...comments, e.detail];
+            }}
+          />
+        </div>
+        <div>
+          <CommentList
+            comments={comments}
+            on:deleted={(e) => {
+              const id = e?.detail;
+              if (id) comments = comments.filter((c) => c.id !== id);
+            }}
+          />
+        </div>
+      </section>
+    {/if}
 
     <!-- 하단 버튼 -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center pt-6 border-t border-gray-200">
@@ -89,13 +102,9 @@
         <form
           method="POST"
           action="?/delete"
+          on:submit|preventDefault={handleDeleteSubmit}
           use:enhance={() => {
-            return async ({ result, update, cancel }) => {
-              if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
-                cancel();
-                return;
-              }
-              
+            return async ({ result, update }) => {
               try {
                 // 기본 업데이트 먼저 수행 (redirect 포함)
                 await update();
@@ -105,7 +114,10 @@
                   if (result.type === 'success' || result.type === 'redirect') {
                     showToast('게시글이 삭제되었습니다.', 'success');
                   } else if (result.type === 'failure' && result.data?.error) {
-                    showToast(result.data.error, 'error');
+                    const errorMessage = typeof result.data.error === 'string' 
+                      ? result.data.error 
+                      : '게시글 삭제에 실패했습니다.';
+                    showToast(errorMessage, 'error');
                   }
                 }
               } catch (error) {

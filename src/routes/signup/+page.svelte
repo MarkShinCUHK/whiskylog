@@ -20,38 +20,6 @@
 
   <form
     method="POST"
-    use:enhance={() => {
-      return async ({ result, update }) => {
-        try {
-          await update();
-
-          if (result && (result.type === 'success' || result.type === 'redirect')) {
-            // 익명 사용자였는지 확인 (서버에서 전달된 정보 사용)
-            const wasAnonymous = result.data?.wasAnonymous ?? false;
-            const convertedCount = result.data?.convertedCount ?? 0;
-            const sessionExpired = result.data?.sessionExpired ?? false;
-
-            if (wasAnonymous && convertedCount > 0) {
-              showToast(
-                `회원가입이 완료되었습니다. 익명으로 작성한 ${convertedCount}개의 글이 본인 글로 옮겨졌습니다.${sessionExpired ? ' (오래된 세션으로 인해 일부 글은 업데이트되지 않았을 수 있습니다. 필요시 다시 로그인해주세요.)' : ''}`,
-                'success'
-              );
-            } else if (wasAnonymous && sessionExpired) {
-              showToast(
-                '회원가입이 완료되었습니다. 다만 오래된 세션으로 인해 익명으로 작성한 일부 글은 업데이트되지 않았을 수 있습니다. 필요시 다시 로그인해주세요.',
-                'success'
-              );
-            } else {
-              showToast('회원가입이 완료되었습니다.', 'success');
-            }
-          } else if (result && result.type === 'failure' && result.data?.error) {
-            showToast(result.data.error, 'error');
-          }
-        } catch (error) {
-          console.error('회원가입 오류:', error);
-        }
-      };
-    }}
     class="rounded-2xl bg-white/80 backdrop-blur-sm p-8 sm:p-10 ring-1 ring-black/5 shadow-sm"
   >
     {#if error}

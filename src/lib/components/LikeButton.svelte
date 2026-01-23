@@ -6,7 +6,7 @@
   export let likeCount = 0;
   export let isLiked = false;
   
-  $: isLoggedIn = !!$page.data?.user;
+  // 익명 사용자도 좋아요 가능
 
   let pending = false;
 
@@ -41,14 +41,12 @@
     <input type="hidden" name="postId" value={postId} />
     <button
       type="submit"
-      disabled={!isLoggedIn || pending}
+      disabled={pending}
       class="flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium shadow-sm hover:shadow
-        {isLoggedIn
-          ? isLiked
-            ? 'bg-red-100 text-red-700 hover:bg-red-200 ring-1 ring-red-200'
-            : 'bg-white text-gray-700 hover:bg-gray-50 ring-1 ring-black/10'
-          : 'bg-gray-50 text-gray-400 cursor-not-allowed ring-1 ring-black/5'}"
-      title={isLoggedIn ? (isLiked ? '좋아요 취소' : '좋아요') : '로그인이 필요합니다'}
+        {isLiked
+          ? 'bg-red-100 text-red-700 hover:bg-red-200 ring-1 ring-red-200'
+          : 'bg-white text-gray-700 hover:bg-gray-50 ring-1 ring-black/10'}"
+      title={isLiked ? '좋아요 취소' : '좋아요'}
     >
       <svg
         class="w-5 h-5 {isLiked ? 'fill-current' : ''} {pending ? 'opacity-70' : ''}"

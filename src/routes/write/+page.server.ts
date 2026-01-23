@@ -9,7 +9,6 @@ export const actions = {
       const title = formData.get('title')?.toString();
       const content = formData.get('content')?.toString();
       const author = formData.get('author')?.toString();
-      const excerpt = formData.get('excerpt')?.toString();
       const editPassword = formData.get('editPassword')?.toString();
       const editPasswordConfirm = formData.get('editPasswordConfirm')?.toString();
 
@@ -53,8 +52,7 @@ export const actions = {
           values: {
             title: title || '',
             content: content || '',
-            author: author || '',
-            excerpt: excerpt || ''
+            author: author || ''
           }
         });
       }
@@ -73,7 +71,6 @@ export const actions = {
           author_name: isLoggedIn ? (user?.nickname || user?.email || undefined) : (author || undefined),
           edit_password: isLoggedIn ? undefined : editPassword,
           user_id: user.id // 익명 사용자도 익명 세션의 user_id를 저장
-          // excerpt는 현재 스키마에 없으므로 제외
         },
         accessToken
       );
@@ -95,8 +92,7 @@ export const actions = {
         values: {
           title: title || '',
           content: content || '',
-          author: author || '',
-          excerpt: excerpt || ''
+          author: author || ''
         }
       });
     }

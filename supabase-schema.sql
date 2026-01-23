@@ -72,7 +72,16 @@ CREATE INDEX IF NOT EXISTS idx_likes_user_id ON likes(user_id);
 -- RLS (Row Level Security) 설정
 -- 
 -- Anonymous Auth와 함께 사용하여 익명 사용자도 인증된 사용자로 처리
--- 익명 글은 비밀번호로 관리하므로 수정/삭제는 서버 사이드에서 처리
+-- 
+-- 익명 글 보안 정책:
+-- - 익명 글(is_anonymous = true)은 user_id와 무관하게 비밀번호로만 수정/삭제 가능
+-- - 토큰 만료 시 user_id가 바뀔 수 있으므로 user_id 기반 권한 검사 불가
+-- - RLS 정책: 익명 글은 누구나 수정/삭제 시도 가능 (서버에서 비밀번호 검증으로 보안 보장)
+-- - 실제 보안: 서버 사이드에서 비밀번호 해시 검증을 철저히 수행
+-- 
+-- 로그인 글 보안 정책:
+-- - 로그인 글(user_id IS NOT NULL AND is_anonymous = false)은 작성자(user_id)만 수정/삭제 가능
+-- - RLS 정책: auth.uid() = user_id인 경우에만 수정/삭제 허용
 
 -- 1. RLS 활성화
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
@@ -92,25 +101,28 @@ ON posts FOR INSERT
 WITH CHECK (true);
 
 -- 수정: 로그인 글은 작성자만, 익명 글은 서버에서 비밀번호 검증
--- 익명 글(is_anonymous = true)은 RLS에서 허용하고 서버에서 비밀번호 검증
+-- 주의: 익명 글(is_anonymous = true)은 RLS에서 누구나 수정 시도 가능
+--       실제 보안은 서버 사이드 비밀번호 검증으로 보장 (user_id 무관)
 CREATE POLICY "Users can update own posts or anonymous posts"
 ON posts FOR UPDATE
 USING (
-  -- 로그인 글: 작성자 본인만
+  -- 로그인 글: 작성자 본인만 (user_id로 권한 검사)
   (user_id IS NOT NULL AND auth.uid() = user_id)
   OR
-  -- 익명 글: 서버에서 비밀번호 검증 (RLS는 허용)
+  -- 익명 글: RLS는 허용하되 서버에서 비밀번호 검증 필수 (user_id 무관)
   (is_anonymous = true)
 );
 
 -- 삭제: 로그인 글은 작성자만, 익명 글은 서버에서 비밀번호 검증
+-- 주의: 익명 글(is_anonymous = true)은 RLS에서 누구나 삭제 시도 가능
+--       실제 보안은 서버 사이드 비밀번호 검증으로 보장 (user_id 무관)
 CREATE POLICY "Users can delete own posts or anonymous posts"
 ON posts FOR DELETE
 USING (
-  -- 로그인 글: 작성자 본인만
+  -- 로그인 글: 작성자 본인만 (user_id로 권한 검사)
   (user_id IS NOT NULL AND auth.uid() = user_id)
   OR
-  -- 익명 글: 서버에서 비밀번호 검증 (RLS는 허용)
+  -- 익명 글: RLS는 허용하되 서버에서 비밀번호 검증 필수 (user_id 무관)
   (is_anonymous = true)
 );
 
@@ -120,7 +132,8 @@ CREATE POLICY "Anyone can read comments"
 ON comments FOR SELECT
 USING (true);
 
--- 작성: 로그인 사용자만 (익명 사용자는 댓글 불가)
+-- 작성: 모든 인증된 사용자(익명 포함) 작성 가능
+-- Anonymous Auth를 사용하면 익명 사용자도 auth.role() = 'authenticated'를 가짐
 CREATE POLICY "Authenticated users can insert comments"
 ON comments FOR INSERT
 WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = user_id);
@@ -142,7 +155,8 @@ CREATE POLICY "Anyone can read likes"
 ON likes FOR SELECT
 USING (true);
 
--- 작성: 로그인 사용자만 (익명 사용자는 좋아요 불가)
+-- 작성: 모든 인증된 사용자(익명 포함) 작성 가능
+-- Anonymous Auth를 사용하면 익명 사용자도 auth.role() = 'authenticated'를 가짐
 CREATE POLICY "Authenticated users can insert likes"
 ON likes FOR INSERT
 WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = user_id);

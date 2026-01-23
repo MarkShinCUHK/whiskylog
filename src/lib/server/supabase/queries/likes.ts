@@ -1,11 +1,14 @@
-import { createSupabaseClient } from '../client.js';
+import { createSupabaseClient, createSupabaseClientWithSession } from '../client.js';
+import type { SessionTokens } from '../auth.js';
 
 /**
  * 게시글의 좋아요 개수 조회
  */
-export async function getLikeCount(postId: string): Promise<number> {
+export async function getLikeCount(postId: string, sessionTokens?: SessionTokens): Promise<number> {
   try {
-    const supabase = createSupabaseClient();
+    const supabase = sessionTokens
+      ? createSupabaseClientWithSession(sessionTokens)
+      : createSupabaseClient();
     
     const { count, error } = await supabase
       .from('likes')
@@ -27,9 +30,11 @@ export async function getLikeCount(postId: string): Promise<number> {
 /**
  * 사용자가 게시글에 좋아요를 눌렀는지 확인
  */
-export async function isLiked(postId: string, userId: string): Promise<boolean> {
+export async function isLiked(postId: string, userId: string, sessionTokens?: SessionTokens): Promise<boolean> {
   try {
-    const supabase = createSupabaseClient();
+    const supabase = sessionTokens
+      ? createSupabaseClientWithSession(sessionTokens)
+      : createSupabaseClient();
     
     const { data, error } = await supabase
       .from('likes')
@@ -56,10 +61,13 @@ export async function isLiked(postId: string, userId: string): Promise<boolean> 
 
 /**
  * 좋아요 토글 (추가/제거)
+ * 익명 사용자도 좋아요 가능 (익명 세션 필요)
  */
-export async function toggleLike(postId: string, userId: string): Promise<boolean> {
+export async function toggleLike(postId: string, userId: string, sessionTokens?: SessionTokens): Promise<boolean> {
   try {
-    const supabase = createSupabaseClient();
+    const supabase = sessionTokens
+      ? createSupabaseClientWithSession(sessionTokens)
+      : createSupabaseClient();
 
     // 현재 좋아요 상태 확인
     const { data: existingLike, error: checkError } = await supabase

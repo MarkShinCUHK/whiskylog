@@ -15,7 +15,7 @@
   }
 
   $: gradientClass = pickGradient(post?.id);
-  $: excerptText = (post?.excerpt?.trim()?.length ? post.excerpt : post?.content) || '';
+  $: excerptText = post?.content || '';
 </script>
 
 <article class="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg">

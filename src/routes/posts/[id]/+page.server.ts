@@ -23,10 +23,11 @@ export async function load({ params, cookies }) {
 
     // 댓글과 좋아요 정보 로드
     const user = await getUser(cookies);
+    const sessionTokens = getSession(cookies);
     const [comments, likeCount, userLiked] = await Promise.all([
-      listComments(postId),
-      getLikeCount(postId),
-      user ? isLiked(postId, user.id) : Promise.resolve(false)
+      listComments(postId, sessionTokens || undefined),
+      getLikeCount(postId, sessionTokens || undefined),
+      user ? isLiked(postId, user.id, sessionTokens || undefined) : Promise.resolve(false)
     ]);
 
     // 정책:
@@ -64,17 +65,20 @@ export const actions = {
   createComment: async ({ request, params, cookies }) => {
     try {
       const postId = params.id;
-      const user = await getUser(cookies);
-
-      if (!user) {
-        return fail(401, {
-          error: '로그인이 필요합니다.'
-        });
-      }
 
       if (!postId) {
         return fail(400, {
           error: '게시글 ID가 없습니다.'
+        });
+      }
+
+      // 익명 사용자도 허용 (익명 세션 자동 생성)
+      const user = await getUserOrCreateAnonymous(cookies);
+      const sessionTokens = getSession(cookies);
+
+      if (!sessionTokens) {
+        return fail(500, {
+          error: '세션을 생성할 수 없습니다.'
         });
       }
 
@@ -88,7 +92,7 @@ export const actions = {
       }
 
       const { createComment } = await import('$lib/server/supabase/queries/comments');
-      const comment = await createComment(postId, content, user.id);
+      const comment = await createComment(postId, content, user.id, sessionTokens);
 
       // redirect 대신 데이터 반환 (use:enhance로 즉시 반영)
       return { comment };
@@ -104,11 +108,13 @@ export const actions = {
   },
   deleteComment: async ({ request, params, cookies }) => {
     try {
-      const user = await getUser(cookies);
+      // 익명 사용자도 허용 (익명 세션 자동 생성)
+      const user = await getUserOrCreateAnonymous(cookies);
+      const sessionTokens = getSession(cookies);
 
-      if (!user) {
-        return fail(401, {
-          error: '로그인이 필요합니다.'
+      if (!sessionTokens) {
+        return fail(500, {
+          error: '세션을 생성할 수 없습니다.'
         });
       }
 
@@ -122,7 +128,7 @@ export const actions = {
       }
 
       const { deleteComment } = await import('$lib/server/supabase/queries/comments');
-      await deleteComment(commentId, user.id);
+      await deleteComment(commentId, user.id, sessionTokens);
 
       return { deletedId: commentId };
     } catch (err) {
@@ -138,13 +144,6 @@ export const actions = {
   toggleLike: async ({ request, params, cookies }) => {
     try {
       const postId = params.id;
-      const user = await getUser(cookies);
-
-      if (!user) {
-        return fail(401, {
-          error: '로그인이 필요합니다.'
-        });
-      }
 
       if (!postId) {
         return fail(400, {
@@ -152,9 +151,22 @@ export const actions = {
         });
       }
 
+      // 익명 사용자도 허용 (익명 세션 자동 생성)
+      const user = await getUserOrCreateAnonymous(cookies);
+      const sessionTokens = getSession(cookies);
+
+      if (!sessionTokens) {
+        return fail(500, {
+          error: '세션을 생성할 수 없습니다.'
+        });
+      }
+
       const { toggleLike, getLikeCount, isLiked } = await import('$lib/server/supabase/queries/likes');
-      await toggleLike(postId, user.id);
-      const [likeCount, liked] = await Promise.all([getLikeCount(postId), isLiked(postId, user.id)]);
+      await toggleLike(postId, user.id, sessionTokens);
+      const [likeCount, liked] = await Promise.all([
+        getLikeCount(postId, sessionTokens),
+        isLiked(postId, user.id, sessionTokens)
+      ]);
 
       // redirect 대신 데이터만 반환 (use:enhance로 빠른 UI 업데이트)
       return { likeCount, isLiked: liked };

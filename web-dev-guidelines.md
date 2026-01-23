@@ -794,12 +794,18 @@ Tailwind 기본 간격 사용:
 
 #### 프로덕션 단계 (완료 ✅)
 - ✅ **RLS 활성화**: 보안 정책 설정 완료
-- ✅ **읽기 정책**: 모든 사용자 읽기 가능
-- ✅ **쓰기 정책**: 인증된 사용자(익명 포함)만 작성 가능
-- ✅ **수정/삭제 정책**: 작성자만 가능 (`auth.uid() = user_id`)
+- ✅ **읽기 정책**: 모든 사용자(익명 포함) 읽기 가능
+- ✅ **쓰기 정책**: 모든 사용자(익명 포함) 작성 가능
+- ✅ **수정/삭제 정책**: 
+  - 로그인 글(`is_anonymous = false`): 작성자(`user_id`)만 수정/삭제 가능
+  - 익명 글(`is_anonymous = true`): RLS에서 허용하되 서버에서 비밀번호 검증으로 보안 보장
+  - 익명 글은 user_id와 무관하게 비밀번호로만 수정/삭제 가능 (토큰 만료 시 user_id가 바뀔 수 있음)
 - ✅ **Anonymous Auth**: 익명 사용자도 세션을 가지도록 구현
 - ✅ **세션 토큰 기반 클라이언트**: `createSupabaseClientWithSession()` 함수로 RLS 정책 적용
 - ✅ **익명 글 관리**: `is_anonymous` 컬럼으로 익명 글 명확히 식별
+  - 익명 글도 익명 세션의 `user_id`를 가지지만, 토큰 만료 시 `user_id`가 바뀔 수 있으므로 비밀번호로만 관리
+  - 익명 글도 익명 세션의 `user_id`를 가지지만, 토큰 만료 시 `user_id`가 바뀔 수 있으므로 비밀번호로만 관리
+  - 익명 글은 user_id와 무관하게 비밀번호로만 수정/삭제 가능
 
 ### Supabase 스키마 구조
 
@@ -837,8 +843,11 @@ CREATE TABLE posts (
 - **해결**: `.env` 파일에 `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` 확인
 
 #### RLS 오류
-- **증상**: Insert 실패 (권한 오류)
-- **해결**: MVP 단계에서는 RLS 비활성화 확인
+- **증상**: Insert/Update/Delete 실패 (권한 오류)
+- **해결**: 
+  - 세션 토큰이 제대로 전달되는지 확인 (`createSupabaseClientWithSession()` 사용)
+  - 익명 사용자의 경우 익명 세션이 생성되었는지 확인 (`getUserOrCreateAnonymous()` 사용)
+  - RLS 정책이 올바르게 설정되었는지 Supabase 대시보드에서 확인
 
 #### 타입 오류
 - **증상**: ID가 number가 아닌 string
@@ -861,4 +870,4 @@ CREATE TABLE posts (
 
 ---
 
-**마지막 업데이트**: 2026-01-22 (익명 사용자 회원가입 시 글 전환 기능 완료, RLS 정책 개선)
+**마지막 업데이트**: 2026-01-22 (감사 보고서 기반 보안 및 코드 품질 개선 완료: RLS 정책 검증, 세션 토큰 적용, SSR 안전성, 문서 동기화)

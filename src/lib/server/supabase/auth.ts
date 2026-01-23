@@ -52,7 +52,7 @@ export async function createAnonymousSession(cookies: Cookies): Promise<SessionT
   const { data, error } = await supabase.auth.signInAnonymously();
   
   if (error || !data.session) {
-    console.error('Anonymous session creation failed:', error);
+    console.error('익명 세션 생성 실패:', error);
     return null;
   }
 
@@ -113,12 +113,12 @@ export async function getUserOrCreateAnonymous(cookies: Cookies): Promise<AuthUs
   if (!user) {
     const tokens = await createAnonymousSession(cookies);
     if (!tokens) {
-      throw new Error('Failed to create anonymous session');
+      throw new Error('익명 세션 생성에 실패했습니다.');
     }
     // 다시 사용자 정보 가져오기
     user = await getUser(cookies);
     if (!user) {
-      throw new Error('Failed to get user after creating anonymous session');
+      throw new Error('익명 세션 생성 후 사용자 정보를 가져오는데 실패했습니다.');
     }
   }
   

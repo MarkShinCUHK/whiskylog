@@ -12,7 +12,7 @@ import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/publi
  */
 if (!PUBLIC_SUPABASE_URL || !PUBLIC_SUPABASE_ANON_KEY) {
   throw new Error(
-    'Missing Supabase environment variables. Please set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY in your .env file.'
+    'Supabase 환경 변수가 없습니다. .env 파일에 PUBLIC_SUPABASE_URL과 PUBLIC_SUPABASE_ANON_KEY를 설정해주세요.'
   );
 }
 
@@ -36,7 +36,7 @@ export function createSupabaseClientWithSession(sessionTokens: { accessToken: st
       }
     },
     auth: {
-      persistSession: false // Session is managed by cookies
+      persistSession: false // 세션은 쿠키로 관리됨
     }
   });
 }
