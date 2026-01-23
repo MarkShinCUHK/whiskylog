@@ -5,11 +5,11 @@
   
   let { form } = $props();
   
-  let title = $state(form?.values?.title || '');
-  let content = $state(form?.values?.content || '');
-  let author = $state(form?.values?.author || '');
-  let error = $state(form?.error || '');
-  let fieldErrors = $state(form?.fieldErrors || {});
+  let title = $state('');
+  let content = $state('');
+  let author = $state('');
+  let error = $state('');
+  let fieldErrors = $state<Record<string, string>>({});
   let editPassword = $state('');
   let editPasswordConfirm = $state('');
 
@@ -17,13 +17,17 @@
   let clientFieldErrors = $state<Record<string, string>>({});
   let touchedFields = $state<Record<string, boolean>>({}); // blur된 필드만 추적
 
-  // form이 업데이트되면 클라이언트 에러 초기화
+  // form이 업데이트되면 상태 동기화
   $effect(() => {
-    if (form) {
-      // 서버에서 에러가 없으면 클라이언트 에러도 초기화
-      if (!form.fieldErrors || Object.keys(form.fieldErrors).length === 0) {
-        clientFieldErrors = {};
-      }
+    if (form?.values?.title !== undefined) title = form.values.title;
+    if (form?.values?.content !== undefined) content = form.values.content;
+    if (form?.values?.author !== undefined) author = form.values.author;
+    if (form?.error !== undefined) error = form.error;
+    if (form?.fieldErrors !== undefined) fieldErrors = form.fieldErrors || {};
+    
+    // 서버에서 에러가 없으면 클라이언트 에러도 초기화
+    if (!form?.fieldErrors || Object.keys(form.fieldErrors).length === 0) {
+      clientFieldErrors = {};
     }
   });
 
@@ -96,25 +100,8 @@
     }
   }
 
-  // 실시간 검사 (입력 중에도 반영)
-  $effect(() => {
-    if (title !== undefined && touchedFields.title) validateTitle();
-  });
-  $effect(() => {
-    if (content !== undefined && touchedFields.content) validateContent();
-  });
-  // 비밀번호는 입력 중에도 검사 (빈 값 제외)
-  $effect(() => {
-    if (editPassword !== undefined && !isLoggedIn) {
-      validatePassword();
-      // 비밀번호가 변경되면 확인 필드도 다시 검사
-      validatePasswordConfirm();
-    }
-  });
-  // 비밀번호 확인도 입력 중에도 검사 (빈 값 제외)
-  $effect(() => {
-    if (editPasswordConfirm !== undefined && !isLoggedIn) validatePasswordConfirm();
-  });
+  // 실시간 검사는 oninput/onblur 핸들러에서 직접 처리
+  // $effect는 무한 루프를 방지하기 위해 제거
 
   // 서버 에러와 클라이언트 에러 병합 (서버 에러가 우선)
   let allFieldErrors = $derived({ ...clientFieldErrors, ...fieldErrors });
@@ -199,11 +186,11 @@
         placeholder="게시글 제목을 입력하세요"
         class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.title ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
         required
-        on:input={() => {
+        oninput={() => {
           touchedFields.title = true;
           validateTitle();
         }}
-        on:blur={() => {
+        onblur={() => {
           touchedFields.title = true;
           validateTitle();
         }}
@@ -226,11 +213,11 @@
         placeholder="게시글 내용을 입력하세요"
         class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.content ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none resize-none transition-colors"
         required
-        on:input={() => {
+        oninput={() => {
           touchedFields.content = true;
           validateContent();
         }}
-        on:blur={() => {
+        onblur={() => {
           touchedFields.content = true;
           validateContent();
         }}
@@ -256,13 +243,13 @@
           class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.editPassword ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
           required
           minlength="4"
-          on:input={() => {
+          oninput={() => {
             // 입력 중에도 검사 (빈 값이면 에러 표시 안 함)
             validatePassword();
             // 비밀번호가 변경되면 확인 필드도 다시 검사
             validatePasswordConfirm();
           }}
-          on:blur={() => {
+          onblur={() => {
             touchedFields.editPassword = true;
             validatePassword();
             // blur 시 확인 필드도 다시 검사
@@ -290,7 +277,7 @@
           class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.editPasswordConfirm ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
           required
           minlength="4"
-          on:input={() => {
+          oninput={() => {
             // 입력 중에도 검사
             if (!touchedFields.editPasswordConfirm) {
               touchedFields.editPasswordConfirm = true;
@@ -298,7 +285,7 @@
             // 즉시 검사 실행
             validatePasswordConfirm();
           }}
-          on:blur={() => {
+          onblur={() => {
             touchedFields.editPasswordConfirm = true;
             validatePasswordConfirm();
           }}

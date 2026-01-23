@@ -5,16 +5,31 @@
   
   let { data, form } = $props();
   
-  let title = $state(form?.values?.title || data.post?.title || '');
-  let content = $state(form?.values?.content || data.post?.content || '');
-  let author = $state(form?.values?.author || data.post?.author || '');
-  let error = $state(form?.error || '');
-  let fieldErrors = $state(form?.fieldErrors || {});
+  let title = $state('');
+  let content = $state('');
+  let author = $state('');
+  let error = $state('');
+  let fieldErrors = $state<Record<string, string>>({});
   let editPassword = $state('');
 
   // 클라이언트 사이드 실시간 유효성 검사
   let clientFieldErrors = $state<Record<string, string>>({});
   let touchedFields = $state<Record<string, boolean>>({}); // blur된 필드만 추적
+
+  // 초기값 설정 및 form 업데이트 시 동기화
+  $effect(() => {
+    if (form?.values?.title !== undefined) title = form.values.title;
+    else if (data.post?.title !== undefined) title = data.post.title;
+    
+    if (form?.values?.content !== undefined) content = form.values.content;
+    else if (data.post?.content !== undefined) content = data.post.content;
+    
+    if (form?.values?.author !== undefined) author = form.values.author;
+    else if (data.post?.author !== undefined) author = data.post.author;
+    
+    if (form?.error !== undefined) error = form.error;
+    if (form?.fieldErrors !== undefined) fieldErrors = form.fieldErrors || {};
+  });
 
   function validateTitle() {
     if (touchedFields.title) {
@@ -52,18 +67,8 @@
     }
   }
 
-  // 실시간 검사 (입력 중에도 반영)
-  $effect(() => {
-    if (title !== undefined && touchedFields.title) validateTitle();
-  });
-  $effect(() => {
-    if (content !== undefined && touchedFields.content) validateContent();
-  });
-  $effect(() => {
-    if (editPassword !== undefined && data.post?.isAnonymous) {
-      validatePassword();
-    }
-  });
+  // 실시간 검사는 oninput/onblur 핸들러에서 직접 처리
+  // $effect는 무한 루프를 방지하기 위해 제거
 
   // 서버 에러와 클라이언트 에러 병합
   let allFieldErrors = $derived({ ...fieldErrors, ...clientFieldErrors });
@@ -146,13 +151,13 @@
         placeholder="게시글 제목을 입력하세요"
         class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.title ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
         required
-        on:input={() => {
+        oninput={() => {
           if (!touchedFields.title) {
             touchedFields.title = true;
           }
           validateTitle();
         }}
-        on:blur={() => {
+        onblur={() => {
           touchedFields.title = true;
           validateTitle();
         }}
@@ -175,13 +180,13 @@
         placeholder="게시글 내용을 입력하세요"
         class="w-full px-4 py-3 sm:py-2 border {allFieldErrors.content ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none resize-none"
         required
-        on:input={() => {
+        oninput={() => {
           if (!touchedFields.content) {
             touchedFields.content = true;
           }
           validateContent();
         }}
-        on:blur={() => {
+        onblur={() => {
           touchedFields.content = true;
           validateContent();
         }}
@@ -206,13 +211,13 @@
           autocomplete="current-password"
           class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.editPassword ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
           required
-          on:input={() => {
+          oninput={() => {
             if (!touchedFields.editPassword) {
               touchedFields.editPassword = true;
             }
             validatePassword();
           }}
-          on:blur={() => {
+          onblur={() => {
             touchedFields.editPassword = true;
             validatePassword();
           }}

@@ -2,6 +2,13 @@
   let { initialQuery = '' }: { initialQuery?: string } = $props();
 
   let q = $state(initialQuery);
+  
+  // initialQuery가 변경되면 q도 업데이트
+  $effect(() => {
+    if (initialQuery !== undefined) {
+      q = initialQuery;
+    }
+  });
 </script>
 
 <form action="/search" method="GET" class="w-full">
