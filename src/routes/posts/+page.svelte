@@ -14,7 +14,7 @@
 </script>
 
 <svelte:head>
-  <title>게시글 목록 - DramLog</title>
+  <title>게시글 목록 - whiskylog</title>
 </svelte:head>
 
 <div class="max-w-6xl xl:max-w-7xl mx-auto px-4 xl:px-8 py-12">

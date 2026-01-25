@@ -19,7 +19,7 @@
 </script>
 
 <svelte:head>
-  <title>회원가입 - DramLog</title>
+  <title>회원가입 - whiskylog</title>
 </svelte:head>
 
 <div class="max-w-md mx-auto px-4 py-12">

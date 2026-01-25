@@ -20,7 +20,7 @@
 </script>
 
 <svelte:head>
-  <title>로그인 - DramLog</title>
+  <title>로그인 - whiskylog</title>
 </svelte:head>
 
 <div class="max-w-md mx-auto px-4 py-12">

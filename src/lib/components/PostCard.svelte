@@ -25,32 +25,58 @@
   }
 
   let excerptText = $derived(stripHtml(post?.content));
+
+  // 첫 번째 이미지 URL 추출
+  function getFirstImageUrl(html: string | undefined): string | null {
+    if (!html) return null;
+    
+    // img 태그에서 src 속성 추출
+    const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+    if (imgMatch && imgMatch[1]) {
+      return imgMatch[1];
+    }
+    
+    return null;
+  }
+
+  let thumbnailUrl = $derived(getFirstImageUrl(post?.content));
 </script>
 
 <article class="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg">
   <a href="/posts/{post.id}" class="block">
-    <!-- 썸네일 (사진 업로드 전: 그라데이션 + 아이콘) -->
-    <div class="relative aspect-[16/10] w-full overflow-hidden bg-gradient-to-br {gradientClass}">
-      <div class="absolute inset-0 opacity-20 [background:radial-gradient(circle_at_20%_20%,white,transparent_45%),radial-gradient(circle_at_80%_70%,white,transparent_50%)]"></div>
-      <div class="absolute inset-0 flex items-center justify-center">
-        <!-- 위스키 병 아이콘 -->
-        <div class="rounded-2xl bg-white/10 p-4 ring-1 ring-white/20 backdrop-blur-sm transition group-hover:bg-white/15">
-          <svg class="h-10 w-10 text-white/90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M9 2h6v2a1 1 0 0 1-1 1h-1v2.2l1.8 2.4c.13.17.2.38.2.6V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2V10.2c0-.22.07-.43.2-.6L11 7.2V5h-1a1 1 0 0 1-1-1V2Z"
-              fill="currentColor"
-              opacity="0.95"
-            />
-            <path
-              d="M9.5 13.5h5"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              opacity="0.85"
-            />
-          </svg>
+    <!-- 썸네일 (첫 번째 이미지 또는 그라데이션) -->
+    <div class="relative aspect-[16/10] w-full overflow-hidden {thumbnailUrl ? 'bg-gray-100' : `bg-gradient-to-br ${gradientClass}`}">
+      {#if thumbnailUrl}
+        <!-- 첫 번째 이미지를 썸네일로 사용 (비율 유지하면서 crop) -->
+        <img
+          src={thumbnailUrl}
+          alt={post.title || '게시글 썸네일'}
+          class="h-full w-full object-cover"
+          loading="lazy"
+        />
+      {:else}
+        <!-- 이미지가 없을 때 그라데이션 + 아이콘 -->
+        <div class="absolute inset-0 opacity-20 [background:radial-gradient(circle_at_20%_20%,white,transparent_45%),radial-gradient(circle_at_80%_70%,white,transparent_50%)]"></div>
+        <div class="absolute inset-0 flex items-center justify-center">
+          <!-- 위스키 병 아이콘 -->
+          <div class="rounded-2xl bg-white/10 p-4 ring-1 ring-white/20 backdrop-blur-sm transition group-hover:bg-white/15">
+            <svg class="h-10 w-10 text-white/90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M9 2h6v2a1 1 0 0 1-1 1h-1v2.2l1.8 2.4c.13.17.2.38.2.6V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2V10.2c0-.22.07-.43.2-.6L11 7.2V5h-1a1 1 0 0 1-1-1V2Z"
+                fill="currentColor"
+                opacity="0.95"
+              />
+              <path
+                d="M9.5 13.5h5"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                opacity="0.85"
+              />
+            </svg>
+          </div>
         </div>
-      </div>
+      {/if}
 
       <!-- 메타 배지 -->
       <div class="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/20 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/10 backdrop-blur">

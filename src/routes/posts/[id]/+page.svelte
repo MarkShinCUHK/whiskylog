@@ -56,7 +56,7 @@
 </script>
 
 <svelte:head>
-  <title>{data.post?.title || '게시글'} - DramLog</title>
+  <title>{data.post?.title || '게시글'} - whiskylog</title>
 </svelte:head>
 
 {#if data.post}

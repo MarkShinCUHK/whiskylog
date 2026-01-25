@@ -1,6 +1,6 @@
-# DramLog 개발 가이드라인
+# whiskylog 개발 가이드라인
 
-이 문서는 SvelteKit (Svelte 5) + Tailwind CSS 기반의 DramLog (위스키 리뷰/게시글 커뮤니티) 개발 시 따라야 할 상세 가이드라인을 정의합니다.
+이 문서는 SvelteKit (Svelte 5) + Tailwind CSS 기반의 whiskylog (위스키 리뷰/게시글 커뮤니티) 개발 시 따라야 할 상세 가이드라인을 정의합니다.
 
 ## 📋 목차
 1. [프로젝트 개요](#프로젝트-개요)
@@ -17,7 +17,7 @@
 ## 프로젝트 개요
 
 ### 목표
-- DramLog: 위스키 리뷰 및 게시글 커뮤니티 플랫폼
+- whiskylog: 위스키 리뷰 및 게시글 커뮤니티 플랫폼
 - 1인 개발 기준의 MVP 구현
 - 서버사이드 렌더링(SSR) 기반의 빠른 로딩
 - Tailwind CSS만 사용한 스타일링
@@ -39,8 +39,9 @@
 - ✅ 데이터베이스 스키마 생성 (Supabase posts 테이블)
 - ✅ 게시글 CRUD 기능 구현 (생성, 조회, 목록)
 - ✅ Supabase 쿼리 계층 구조 구축 (`src/lib/server/supabase/queries/posts.ts`)
-- ✅ 프로젝트 이름 DramLog로 통일
-- ✅ 날짜 2026-01-22 기준으로 업데이트
+- ✅ 프로젝트 이름 whiskylog로 변경 (2026-01-25)
+- ✅ 브랜딩 개선 (로고 이미지 추가, 아스키 아트 변경, 썸네일 기능)
+- ✅ 날짜 2026-01-25 기준으로 업데이트
 - ✅ Svelte 5 도입 완료 (신규 컴포넌트는 Runes 모드, 기존 컴포넌트는 점진적 마이그레이션)
 
 ---
@@ -317,7 +318,7 @@ src/lib/
 <nav class="bg-whiskey-900 text-white">
   <div class="max-w-6xl mx-auto px-4 py-4">
     <div class="flex items-center justify-between">
-      <a href="/" class="text-2xl font-bold">DramLog</a>
+      <a href="/" class="text-2xl font-bold">whiskylog</a>
       <div class="flex gap-4">
         <a href="/posts" class="hover:text-whiskey-300">게시글</a>
         <a href="/write" class="hover:text-whiskey-300">작성하기</a>
@@ -330,6 +331,18 @@ src/lib/
 ---
 
 ## 디자인 시스템
+
+### 브랜딩 (완료 ✅)
+- ✅ **프로젝트 이름**: whiskylog
+- ✅ **로고 이미지**: `static/logo.svg` (SVG 형식, 투명 배경)
+  - 헤더에 로고 이미지 통합
+  - 메인 페이지에 로고 이미지 및 WHISKYLOG 아스키 아트 표시
+  - 아스키 아트는 태블릿 이상에서만 표시 (`hidden sm:block`)
+- ✅ **게시글 목록 썸네일**: 
+  - 첫 번째 이미지를 썸네일로 사용 (`PostCard.svelte`)
+  - 이미지가 없으면 기존 그라데이션 배경 사용
+  - 썸네일은 `object-cover`로 비율 유지하면서 crop
+  - `/write`에서 첫 번째 이미지 업로드 시 토스트 메시지 표시
 
 ### 색상 팔레트 (위스키 테마)
 
@@ -743,7 +756,7 @@ Tailwind 기본 간격 사용:
      - 🔄 이미지 압축 기능 (향후 추가)
      - Lazy loading
      - WebP 형식 지원
-     - 썸네일 생성
+     - ✅ 썸네일 기능 구현 완료 (게시글 목록에서 첫 번째 이미지를 썸네일로 사용)
    - **코드 스플리팅**: SvelteKit의 자동 코드 스플리팅 활용
    - **DB 최적화**: 인덱스 추가, 쿼리 최적화, 연결 풀링 (Supabase에서 자동 관리)
 
@@ -956,6 +969,21 @@ CREATE TABLE posts (
 
 ---
 
+## 최근 업데이트 (2026-01-25)
+
+### 브랜딩 변경
+- ✅ 프로젝트 이름: DramLog → whiskylog
+- ✅ 로고 이미지 추가: `static/logo.svg` (SVG 형식, 투명 배경)
+- ✅ 메인 페이지: 로고 이미지 및 WHISKYLOG 아스키 아트 표시
+- ✅ 헤더: 로고 이미지 통합
+
+### UI 개선
+- ✅ 게시글 목록 썸네일: 첫 번째 이미지를 썸네일로 사용 (비율 유지 crop)
+- ✅ 썸네일 알림: `/write`에서 첫 번째 이미지 업로드 시 토스트 메시지 표시
+- ✅ 반응형 개선: 아스키 아트는 태블릿 이상에서만 표시
+
+---
+
 ## 개발 프로세스 및 문서 업데이트 규칙
 
 ### 개발 프로세스
@@ -971,4 +999,4 @@ CREATE TABLE posts (
 
 ---
 
-**마지막 업데이트**: 2026-01-22 (RichTextEditor 및 ResizableImage 개선)
+**마지막 업데이트**: 2026-01-25 (브랜딩 변경, 로고 추가, 썸네일 기능)

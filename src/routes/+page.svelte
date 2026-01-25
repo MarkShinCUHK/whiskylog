@@ -14,20 +14,24 @@
 </script>
 
 <svelte:head>
-  <title>DramLog - 위스키 리뷰 커뮤니티</title>
+  <title>whiskylog - 위스키 리뷰 커뮤니티</title>
   <meta name="description" content="위스키 리뷰와 정보를 공유하는 커뮤니티입니다." />
 </svelte:head>
 
 <div class="max-w-6xl xl:max-w-7xl mx-auto px-4 xl:px-8 py-12">
   <!-- 메인 타이틀 -->
   <section class="mb-16 text-center">
-    <div class="mb-4">
-      <pre class="text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg font-mono leading-tight text-whiskey-900 whitespace-pre mx-auto">██████╗ ██████╗  █████╗ ███╗   ███╗██╗      ██████╗  ██████╗ 
-██╔══██╗██╔══██╗██╔══██╗████╗ ████║██║     ██╔═══██╗██╔════╝ 
-██║  ██║██████╔╝███████║██╔████╔██║██║     ██║   ██║██║  ███╗
-██║  ██║██╔══██╗██╔══██║██║╚██╔╝██║██║     ██║   ██║██║   ██║
-██████╔╝██║  ██║██║  ██║██║ ╚═╝ ██║███████╗╚██████╔╝╚██████╔╝
-╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝ ╚═════╝  ╚═════╝</pre>
+    <div class="mb-6 flex justify-center">
+      <img src="/logo.svg" alt="whiskylog" class="h-24 w-24 sm:h-32 sm:w-32" />
+    </div>
+    <!-- 데스크톱에서만 아스키 아트 표시 -->
+    <div class="mb-4 hidden sm:block">
+      <pre class="text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg font-mono leading-tight text-whiskey-900 whitespace-pre mx-auto">██╗    ██╗██╗  ██╗██╗███████╗██╗  ██╗██╗   ██╗██╗      ██████╗  ██████╗ 
+██║    ██║██║  ██║██║██╔════╝██║ ██╔╝╚██╗ ██╔╝██║     ██╔═══██╗██╔════╝ 
+██║ █╗ ██║███████║██║███████╗█████╔╝  ╚████╔╝ ██║     ██║   ██║██║  ███╗
+██║███╗██║██╔══██║██║╚════██║██╔═██╗   ╚██╔╝  ██║     ██║   ██║██║   ██║
+╚███╔███╔╝██║  ██║██║███████║██║  ██╗   ██║   ███████╗╚██████╔╝╚██████╔╝
+ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝  ╚═════╝</pre>
     </div>
     <p class="text-lg sm:text-xl text-gray-700 max-w-2xl mx-auto">
       위스키를 사랑하는 사람들이 모여 리뷰와 정보를 공유하는 공간입니다.

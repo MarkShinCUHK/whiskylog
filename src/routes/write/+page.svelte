@@ -208,7 +208,7 @@
 </script>
 
 <svelte:head>
-  <title>글 작성 - DramLog</title>
+  <title>글 작성 - whiskylog</title>
 </svelte:head>
 
 <div class="max-w-4xl xl:max-w-5xl mx-auto px-4 xl:px-8 py-12">
@@ -290,9 +290,17 @@
           }}
           onImageAdd={(blobUrl, file) => {
             // Blob URL과 File 객체를 매핑하여 저장
-            // console.log('클라이언트: 이미지 추가됨 - Blob URL:', blobUrl, 'File:', file.name, file.type, file.size);
+            const isFirstImage = imageFiles.size === 0;
             imageFiles.set(blobUrl, file);
-            // console.log('클라이언트: imageFiles Map 크기:', imageFiles.size);
+            
+            // 첫 번째 이미지 업로드 시 토스트 메시지 표시
+            if (isFirstImage) {
+              showToast({
+                message: '첫 번째 이미지가 게시글 목록의 썸네일로 사용됩니다.',
+                type: 'info',
+                duration: 4000
+              });
+            }
           }}
         />
       </div>

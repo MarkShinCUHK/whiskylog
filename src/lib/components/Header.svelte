@@ -13,8 +13,9 @@
   <div class="max-w-6xl mx-auto px-4 py-3">
     <div class="flex items-center justify-between">
       <!-- Logo -->
-      <a href="/" class="hover:opacity-80 transition-opacity">
-        <span class="text-lg sm:text-xl font-semibold tracking-tight text-whiskey-900">DramLog</span>
+      <a href="/" class="hover:opacity-80 transition-opacity flex items-center gap-2">
+        <img src="/logo.svg" alt="whiskylog" class="h-8 w-8 sm:h-10 sm:w-10" />
+        <span class="text-lg sm:text-xl font-semibold tracking-tight text-whiskey-900">whiskylog</span>
       </a>
 
       <!-- Desktop Menu -->

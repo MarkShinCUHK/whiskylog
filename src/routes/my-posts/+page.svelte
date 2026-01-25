@@ -46,7 +46,7 @@
 </script>
 
 <svelte:head>
-  <title>내 글 - DramLog</title>
+  <title>내 글 - whiskylog</title>
 </svelte:head>
 
 <div class="max-w-6xl xl:max-w-7xl mx-auto px-4 xl:px-8 py-12">

@@ -106,7 +106,7 @@
 </script>
 
 <svelte:head>
-  <title>글 수정 - {data.post?.title || 'DramLog'}</title>
+  <title>글 수정 - {data.post?.title || 'whiskylog'}</title>
 </svelte:head>
 
 <div class="max-w-4xl xl:max-w-5xl mx-auto px-4 xl:px-8 py-12">

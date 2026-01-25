@@ -1,7 +1,7 @@
-# DramLog 개발 규칙
+# whiskylog 개발 규칙
 
 ## 프로젝트 개요
-- **프로젝트**: DramLog - 위스키 리뷰/게시글 커뮤니티 웹사이트
+- **프로젝트**: whiskylog - 위스키 리뷰/게시글 커뮤니티 웹사이트
 - **기술 스택**: SvelteKit + Tailwind CSS + Supabase
 - **렌더링**: 서버사이드 렌더링(SSR) 기반
 - **개발 모드**: 1인 개발 기준
@@ -133,6 +133,8 @@ src/
 │               └── images.ts (Blob URL 변환 함수)
 ├── app.css (Tailwind CSS)
 └── app.html
+├── static/ (정적 파일)
+│   └── logo.svg (로고 이미지, SVG 형식, 투명 배경)
 ```
 
 ## MVP 기능 (현재 단계 - 완료 ✅)
@@ -145,7 +147,8 @@ src/
 7. ✅ PostgreSQL 연결 및 마이그레이션 구현 (레거시)
 8. ✅ 데이터베이스 스키마 생성 (posts 테이블)
 9. ✅ 게시글 CRUD 기능 (생성, 조회, 목록)
-10. ✅ 프로젝트 이름 DramLog로 통일
+10. ✅ 프로젝트 이름 whiskylog로 변경 (2026-01-25)
+11. ✅ 브랜딩 개선 (로고 이미지 추가, 아스키 아트 변경, 썸네일 기능)
 11. ✅ 날짜 2026-01-20 기준으로 업데이트
 12. ✅ Supabase 통합 (글 작성/목록/상세 - 완전 전환 완료)
 13. ✅ 게시글 수정 기능 (`/posts/[id]/edit`)
@@ -513,6 +516,14 @@ src/
    - HTML에서 Blob URL 추출 후 해당 File 객체를 FormData에 추가
    - 서버에서 Blob URL을 Supabase Storage URL로 변환
 
+## 브랜딩 및 UI 개선 (완료 ✅)
+- ✅ 프로젝트 이름 변경: DramLog → whiskylog
+- ✅ 로고 이미지 추가: `static/logo.svg` (SVG 형식, 투명 배경)
+- ✅ 메인 페이지: 로고 이미지 및 WHISKYLOG 아스키 아트 표시 (태블릿 이상에서만 아스키 아트 표시)
+- ✅ 헤더: 로고 이미지 통합
+- ✅ 게시글 목록 썸네일: 첫 번째 이미지를 썸네일로 사용 (비율 유지 crop, `object-cover`)
+- ✅ 썸네일 알림: `/write`에서 첫 번째 이미지 업로드 시 토스트 메시지 표시
+
 ## 추가 참조
 - 상세 가이드라인: `web-dev-guidelines.md` 참조
-- 마지막 업데이트: 2026-01-22 (RichTextEditor 및 ResizableImage 개선)
+- 마지막 업데이트: 2026-01-25 (브랜딩 변경, 로고 추가, 썸네일 기능)

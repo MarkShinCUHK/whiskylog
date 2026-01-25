@@ -1,6 +1,6 @@
 <svelte:head>
-  <title>문의 - DramLog</title>
-  <meta name="description" content="DramLog 문의 페이지" />
+  <title>문의 - whiskylog</title>
+  <meta name="description" content="whiskylog 문의 페이지" />
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 py-10">
@@ -18,7 +18,7 @@
         <span class="mt-1 inline-block h-2 w-2 rounded-full bg-whiskey-500"></span>
         <div>
           <div class="font-medium text-gray-900">Discord</div>
-          <div class="text-sm text-gray-600">예: @dramlog (추후 수정 예정)</div>
+          <div class="text-sm text-gray-600">예: @whiskylog (추후 수정 예정)</div>
         </div>
       </li>
       <li class="flex items-start gap-3">
@@ -32,7 +32,7 @@
         <span class="mt-1 inline-block h-2 w-2 rounded-full bg-whiskey-500"></span>
         <div>
           <div class="font-medium text-gray-900">Email</div>
-          <div class="text-sm text-gray-600">예: contact@dramlog.dev (추후 수정 예정)</div>
+          <div class="text-sm text-gray-600">예: contact@whiskylog.dev (추후 수정 예정)</div>
         </div>
       </li>
     </ul>
