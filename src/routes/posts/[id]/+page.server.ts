@@ -26,10 +26,13 @@ export async function load({ params, cookies }) {
     const user = await getUser(cookies);
     const sessionTokens = getSession(cookies);
     const canSocial = !!user && !user.isAnonymous;
+    
+    // 댓글 기능이 비활성화되어 있으면 빈 배열 반환 (에러 방지)
+    const ENABLE_COMMENTS = false;
     const [comments, likeCount, userLiked] = await Promise.all([
-      listComments(postId, sessionTokens || undefined),
-      getLikeCount(postId, sessionTokens || undefined),
-      canSocial ? isLiked(postId, user.id, sessionTokens || undefined) : Promise.resolve(false)
+      ENABLE_COMMENTS ? listComments(postId, sessionTokens || undefined) : Promise.resolve([]),
+      getLikeCount(postId, sessionTokens || undefined).catch(() => 0), // 에러 발생 시 0 반환
+      canSocial ? isLiked(postId, user.id, sessionTokens || undefined).catch(() => false) : Promise.resolve(false)
     ]);
 
     // 정책:

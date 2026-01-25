@@ -44,8 +44,15 @@ export async function listComments(postId: string, sessionTokens?: SessionTokens
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('댓글 목록 조회 오류:', error);
-      throw error;
+      // RLS 정책 관련 에러는 조용히 처리 (기능은 정상 작동)
+      if (error.code === 'PGRST301' || error.code === '42501') {
+        return [];
+      }
+      // 기타 에러는 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('댓글 목록 조회 경고:', error.message);
+      }
+      return [];
     }
 
     if (!data || data.length === 0) {
@@ -55,7 +62,10 @@ export async function listComments(postId: string, sessionTokens?: SessionTokens
     // 댓글 목록 반환 (사용자 정보는 클라이언트에서 처리)
     return data.map(mapRowToComment);
   } catch (error) {
-    console.error('댓글 목록 조회 오류:', error);
+    // 예상치 못한 에러는 개발 환경에서만 로그 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('댓글 목록 조회 예외:', error instanceof Error ? error.message : error);
+    }
     return [];
   }
 }

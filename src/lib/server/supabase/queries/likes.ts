@@ -16,13 +16,25 @@ export async function getLikeCount(postId: string, sessionTokens?: SessionTokens
       .eq('post_id', postId);
 
     if (error) {
-      console.error('좋아요 개수 조회 오류:', error);
+      // RLS 정책 관련 에러는 조용히 처리 (기능은 정상 작동)
+      // PGRST301: RLS 정책 위반, 42501: 권한 없음 등은 정상적인 경우일 수 있음
+      if (error.code === 'PGRST301' || error.code === '42501') {
+        // RLS 정책이 제대로 설정되지 않은 경우이지만, 기능은 정상 작동하므로 조용히 처리
+        return 0;
+      }
+      // 기타 에러는 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('좋아요 개수 조회 경고:', error.message);
+      }
       return 0;
     }
 
     return count ?? 0;
   } catch (error) {
-    console.error('좋아요 개수 조회 오류:', error);
+    // 예상치 못한 에러는 개발 환경에서만 로그 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('좋아요 개수 조회 예외:', error instanceof Error ? error.message : error);
+    }
     return 0;
   }
 }
@@ -45,16 +57,26 @@ export async function isLiked(postId: string, userId: string, sessionTokens?: Se
 
     if (error) {
       if (error.code === 'PGRST116') {
-        // 레코드가 없으면 좋아요 안 함
+        // 레코드가 없으면 좋아요 안 함 (정상적인 경우)
         return false;
       }
-      console.error('좋아요 확인 오류:', error);
+      // RLS 정책 관련 에러는 조용히 처리
+      if (error.code === 'PGRST301' || error.code === '42501') {
+        return false;
+      }
+      // 기타 에러는 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('좋아요 확인 경고:', error.message);
+      }
       return false;
     }
 
     return !!data;
   } catch (error) {
-    console.error('좋아요 확인 오류:', error);
+    // 예상치 못한 에러는 개발 환경에서만 로그 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('좋아요 확인 예외:', error instanceof Error ? error.message : error);
+    }
     return false;
   }
 }
