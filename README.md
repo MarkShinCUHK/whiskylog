@@ -1,4 +1,4 @@
-# whiskylog
+# DramLog
 
 SvelteKit (Svelte 5) + Tailwind CSS 기반의 위스키 리뷰 및 게시글 커뮤니티 웹사이트입니다.
 
@@ -12,7 +12,7 @@ SvelteKit (Svelte 5) + Tailwind CSS 기반의 위스키 리뷰 및 게시글 커
 ## ☁️ 배포 (Vercel)
 
 ### 현재 배포 도메인
-- Production: `https://dramlog-topaz.vercel.app` (도메인은 유지, 프로젝트명만 변경)
+- Production: `https://dramlog-topaz.vercel.app`
 
 ### 배포 방식
 - GitHub `main` 브랜치에 push하면 **Vercel이 자동으로 Production 배포**합니다.
@@ -25,7 +25,7 @@ SvelteKit (Svelte 5) + Tailwind CSS 기반의 위스키 리뷰 및 게시글 커
 
 ### Supabase Auth 설정 (배포 도메인 반영)
 Supabase 대시보드 → Authentication → URL Configuration
-- **Site URL**: `https://dramlog-topaz.vercel.app` (도메인은 유지)
+- **Site URL**: `https://dramlog-topaz.vercel.app`
 - **Redirect URLs**:
   - `https://dramlog-topaz.vercel.app/*`
   - `https://*.vercel.app/*` (Preview 도메인까지 사용할 경우)
@@ -85,7 +85,7 @@ npm run preview
 ## 📁 프로젝트 구조
 
 ```
-whiskylog/
+dramlog/
 ├── src/
 │   ├── lib/
 │   │   ├── components/          # 재사용 컴포넌트
@@ -210,8 +210,6 @@ whiskylog/
 - ✅ Storage 구조 개선: `posts/{userId}/{postId}/image_{index}.{extension}` (리소스 타입 기반)
 - ✅ 게시글 삭제 시 이미지 자동 삭제 (폴더 전체 삭제)
 - ✅ 게시글 수정 시 이미지 관리 (삭제된 이미지 자동 삭제, 새 이미지 업로드)
-- ✅ 게시글 목록 썸네일: 첫 번째 이미지를 썸네일로 사용 (비율 유지 crop, `object-cover`)
-- ✅ 썸네일 알림: `/write`에서 첫 번째 이미지 업로드 시 토스트 메시지 표시
 
 #### MVP 7단계: Supabase Anonymous Auth + RLS 설정 (완료 ✅)
 - ✅ Supabase Anonymous Auth 구현 (익명 사용자도 세션을 가지도록 함)
@@ -258,17 +256,13 @@ whiskylog/
 
 ## 🎨 디자인
 
-whiskylog를 위한 따뜻한 색감 (골드, 앰버, 다크 브라운)을 사용합니다.
-- **로고**: SVG 형식의 투명 배경 로고 (`static/logo.svg`)
-- **브랜딩**: 메인 페이지에 로고 및 WHISKYLOG 아스키 아트 표시 (태블릿 이상에서만 아스키 아트 표시)
+DramLog를 위한 따뜻한 색감 (골드, 앰버, 다크 브라운)을 사용합니다.
 - **색감**: 위스키 커뮤니티 느낌의 따뜻한 톤
 - **반응형**: Mobile First 접근
 - **UI**: 모던하고 깔끔한 디자인, Tailwind 기본 스타일 활용
 
 ## 📅 업데이트 이력
 
-- **2026-01-25**: 브랜딩 변경 (DramLog → whiskylog, 로고 이미지 추가, 아스키 아트 변경)
-- **2026-01-25**: 게시글 목록 썸네일 기능 추가 (첫 번째 이미지를 썸네일로 사용, 비율 유지 crop)
 - **2026-01-22**: RichTextEditor 및 ResizableImage 개선
 - **2026-01-22**: Storage 구조 개선 (리소스 타입 기반 구조, 게시글 삭제 시 이미지 자동 삭제)
 - **2026-01-22**: 이미지 삽입 기능 추가 (TipTap Image extension + Supabase Storage, FormData + File 업로드 규칙)
@@ -287,5 +281,4 @@ whiskylog를 위한 따뜻한 색감 (골드, 앰버, 다크 브라운)을 사�
 - **2026-01-21**: MVP 4단계 완료 (익명 게시판 + 선택 로그인, 로그인 사용자 글 작성)
 - **2026-01-20**: MVP 3단계 완료 (게시글 수정/삭제 기능)
 - **2026-01-20**: Supabase 통합 완료
-- **2026-01-25**: 프로젝트 이름 whiskylog로 변경
 - **2026-01-20**: 프로젝트 이름 DramLog로 통일

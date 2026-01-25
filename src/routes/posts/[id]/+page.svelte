@@ -29,14 +29,32 @@
             const htmlWidth = img.getAttribute('width');
             const htmlHeight = img.getAttribute('height');
             
-            // width/height 속성이 있으면 정확히 적용
+            // 컨테이너 너비 확인
+            const containerWidth = postContent.clientWidth;
+            
             if (htmlWidth && htmlHeight) {
-              img.style.setProperty('width', `${htmlWidth}px`, 'important');
-              img.style.setProperty('height', `${htmlHeight}px`, 'important');
-              // object-fit도 명시적으로 설정하여 비율 무시
-              img.style.setProperty('object-fit', 'fill', 'important');
+              // resize된 이미지: 지정된 픽셀 크기로 표시하되, 컨테이너보다 크면 비율 유지하면서 축소
+              const widthValue = parseInt(htmlWidth, 10);
+              const heightValue = parseInt(htmlHeight, 10);
+              
+              if (widthValue > containerWidth) {
+                // 컨테이너보다 크면 비율 유지하면서 축소
+                const ratio = containerWidth / widthValue;
+                const newHeight = Math.round(heightValue * ratio);
+                img.style.setProperty('width', '100%', 'important');
+                img.style.setProperty('max-width', '100%', 'important');
+                img.style.setProperty('height', `${newHeight}px`, 'important');
+                img.style.setProperty('object-fit', 'contain', 'important');
+              } else {
+                // 컨테이너보다 작거나 같으면 지정된 픽셀 크기로 표시
+                img.style.setProperty('width', `${htmlWidth}px`, 'important');
+                img.style.setProperty('max-width', '100%', 'important');
+                img.style.setProperty('height', `${htmlHeight}px`, 'important');
+                img.style.setProperty('object-fit', 'fill', 'important');
+              }
             } else {
-              // width/height 속성이 없는 경우: max-width로 제한하여 너무 크게 보이지 않도록
+              // resize하지 않은 이미지: 100% (컨테이너 너비에 맞춤)
+              img.style.setProperty('width', '100%', 'important');
               img.style.setProperty('max-width', '100%', 'important');
               img.style.setProperty('height', 'auto', 'important');
             }
