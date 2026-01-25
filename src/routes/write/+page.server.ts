@@ -2,6 +2,10 @@ import { fail, redirect } from '@sveltejs/kit';
 import { createPost } from '$lib/server/supabase/queries/posts';
 import { getUser, getUserOrCreateAnonymous, getSession } from '$lib/server/supabase/auth';
 
+function plainTextFromHtml(html: string) {
+  return (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 export const actions = {
   default: async ({ request, cookies }) => {
     try {
@@ -21,7 +25,7 @@ export const actions = {
         hasErrors = true;
       }
 
-      if (!content || content.trim().length === 0) {
+      if (!content || plainTextFromHtml(content).length === 0) {
         fieldErrors.content = '내용을 입력해주세요.';
         hasErrors = true;
       }

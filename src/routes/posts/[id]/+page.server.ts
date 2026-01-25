@@ -3,6 +3,7 @@ import { getPostById, deletePost } from '$lib/server/supabase/queries/posts';
 import { getUser, getSession, getUserOrCreateAnonymous } from '$lib/server/supabase/auth';
 import { listComments } from '$lib/server/supabase/queries/comments';
 import { getLikeCount, isLiked } from '$lib/server/supabase/queries/likes';
+import { sanitizePostHtml } from '$lib/server/supabase/queries/posts';
 
 export async function load({ params, cookies }) {
   try {
@@ -24,10 +25,11 @@ export async function load({ params, cookies }) {
     // 댓글과 좋아요 정보 로드
     const user = await getUser(cookies);
     const sessionTokens = getSession(cookies);
+    const canSocial = !!user && !user.isAnonymous;
     const [comments, likeCount, userLiked] = await Promise.all([
       listComments(postId, sessionTokens || undefined),
       getLikeCount(postId, sessionTokens || undefined),
-      user ? isLiked(postId, user.id, sessionTokens || undefined) : Promise.resolve(false)
+      canSocial ? isLiked(postId, user.id, sessionTokens || undefined) : Promise.resolve(false)
     ]);
 
     // 정책:
@@ -45,6 +47,7 @@ export async function load({ params, cookies }) {
 
     return {
       post,
+      postHtml: sanitizePostHtml(post.content),
       comments,
       likeCount,
       isLiked: userLiked,
@@ -72,14 +75,16 @@ export const actions = {
         });
       }
 
-      // 익명 사용자도 허용 (익명 세션 자동 생성)
-      const user = await getUserOrCreateAnonymous(cookies);
+      // 댓글은 로그인 사용자 전용 (익명 세션은 허용하지 않음)
+      const user = await getUser(cookies);
+      if (!user || user.isAnonymous) {
+        return fail(401, { error: '댓글을 작성하려면 로그인이 필요합니다.' });
+      }
+
       const sessionTokens = getSession(cookies);
 
       if (!sessionTokens) {
-        return fail(500, {
-          error: '세션을 생성할 수 없습니다.'
-        });
+        return fail(401, { error: '로그인 세션이 없습니다. 다시 로그인해주세요.' });
       }
 
       const formData = await request.formData();
@@ -108,14 +113,16 @@ export const actions = {
   },
   deleteComment: async ({ request, params, cookies }) => {
     try {
-      // 익명 사용자도 허용 (익명 세션 자동 생성)
-      const user = await getUserOrCreateAnonymous(cookies);
+      // 댓글 삭제는 로그인 사용자 전용 (익명 세션은 허용하지 않음)
+      const user = await getUser(cookies);
+      if (!user || user.isAnonymous) {
+        return fail(401, { error: '댓글을 삭제하려면 로그인이 필요합니다.' });
+      }
+
       const sessionTokens = getSession(cookies);
 
       if (!sessionTokens) {
-        return fail(500, {
-          error: '세션을 생성할 수 없습니다.'
-        });
+        return fail(401, { error: '로그인 세션이 없습니다. 다시 로그인해주세요.' });
       }
 
       const formData = await request.formData();
@@ -151,14 +158,16 @@ export const actions = {
         });
       }
 
-      // 익명 사용자도 허용 (익명 세션 자동 생성)
-      const user = await getUserOrCreateAnonymous(cookies);
+      // 좋아요는 로그인 사용자 전용 (익명 세션은 허용하지 않음)
+      const user = await getUser(cookies);
+      if (!user || user.isAnonymous) {
+        return fail(401, { error: '좋아요를 누르려면 로그인이 필요합니다.' });
+      }
+
       const sessionTokens = getSession(cookies);
 
       if (!sessionTokens) {
-        return fail(500, {
-          error: '세션을 생성할 수 없습니다.'
-        });
+        return fail(401, { error: '로그인 세션이 없습니다. 다시 로그인해주세요.' });
       }
 
       const { toggleLike, getLikeCount, isLiked } = await import('$lib/server/supabase/queries/likes');
@@ -247,9 +256,14 @@ export const actions = {
 
       console.error('게시글 삭제 오류:', err);
       const errorMessage = err instanceof Error ? err.message : '게시글 삭제 중 오류가 발생했습니다.';
-      return fail(500, {
-        error: errorMessage
-      });
+      // 사용자의 입력/권한 문제는 failure로 내려서(use:enhance) UI에서 즉시 에러를 표시할 수 있게 함
+      const status =
+        errorMessage.includes('비밀번호') ? 400 :
+        errorMessage.includes('로그인') ? 401 :
+        errorMessage.includes('본인의') ? 403 :
+        500;
+
+      return fail(status, { error: errorMessage });
     }
   }
 };

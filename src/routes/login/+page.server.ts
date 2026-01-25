@@ -29,14 +29,15 @@ export const actions = {
         errorMessage = error.message || '로그인에 실패했습니다.';
       }
       
-      return fail(401, {
+      // enhance가 'failure'로 처리하도록 4xx 중에서도 400으로 통일
+      return fail(400, {
         error: errorMessage,
         values: { email }
       });
     }
 
     if (!data.session) {
-      return fail(401, {
+      return fail(400, {
         error: '로그인에 실패했습니다. 세션을 생성할 수 없습니다.',
         values: { email }
       });

@@ -2,11 +2,13 @@
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
   import { showToast } from '$lib/stores/toast';
+  import RichTextEditor from '$lib/components/RichTextEditor.svelte';
   
   let { form } = $props();
   
   let title = $state('');
   let content = $state('');
+  let contentText = $state('');
   let author = $state('');
   let error = $state('');
   let fieldErrors = $state<Record<string, string>>({});
@@ -24,12 +26,19 @@
     if (form?.values?.author !== undefined) author = form.values.author;
     if (form?.error !== undefined) error = form.error;
     if (form?.fieldErrors !== undefined) fieldErrors = form.fieldErrors || {};
+    if (form?.values?.content !== undefined) {
+      contentText = plainTextFromHtml(form.values.content || '');
+    }
     
     // 서버에서 에러가 없으면 클라이언트 에러도 초기화
     if (!form?.fieldErrors || Object.keys(form.fieldErrors).length === 0) {
       clientFieldErrors = {};
     }
   });
+
+  function plainTextFromHtml(html: string) {
+    return (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
 
   function validateTitle() {
     if (touchedFields.title) {
@@ -44,7 +53,7 @@
 
   function validateContent() {
     if (touchedFields.content) {
-      if (content.trim().length === 0) {
+      if (contentText.trim().length === 0) {
         clientFieldErrors = { ...clientFieldErrors, content: '내용을 입력해주세요.' };
       } else {
         clientFieldErrors = { ...clientFieldErrors };
@@ -205,23 +214,20 @@
       <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
         내용
       </label>
-      <textarea
-        id="content"
-        name="content"
-        bind:value={content}
-        rows="15"
-        placeholder="게시글 내용을 입력하세요"
-        class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.content ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none resize-none transition-colors"
-        required
-        oninput={() => {
-          touchedFields.content = true;
-          validateContent();
-        }}
-        onblur={() => {
-          touchedFields.content = true;
-          validateContent();
-        }}
-      ></textarea>
+      <!-- 폼 제출 호환을 위해 hidden input 유지 -->
+      <input type="hidden" name="content" value={content} />
+      <div class="{allFieldErrors.content ? 'ring-2 ring-red-300 rounded-2xl' : ''}">
+        <RichTextEditor
+          value={content}
+          placeholder="게시글 내용을 입력하세요"
+          onChange={(html, text) => {
+            content = html;
+            contentText = text;
+            touchedFields.content = true;
+            validateContent();
+          }}
+        />
+      </div>
       {#if allFieldErrors.content}
         <p class="mt-2 text-sm text-red-600">{allFieldErrors.content}</p>
       {/if}

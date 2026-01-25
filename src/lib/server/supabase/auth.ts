@@ -48,21 +48,27 @@ export function getSession(cookies: Cookies): SessionTokens | null {
  * 익명 사용자도 인증된 사용자로 처리하여 RLS 정책 적용 가능
  */
 export async function createAnonymousSession(cookies: Cookies): Promise<SessionTokens | null> {
-  const supabase = createSupabaseClient();
-  const { data, error } = await supabase.auth.signInAnonymously();
-  
-  if (error || !data.session) {
-    console.error('익명 세션 생성 실패:', error);
+  try {
+    const supabase = createSupabaseClient();
+    const { data, error } = await supabase.auth.signInAnonymously();
+
+    if (error || !data.session) {
+      console.error('익명 세션 생성 실패:', error);
+      return null;
+    }
+
+    const tokens: SessionTokens = {
+      accessToken: data.session.access_token,
+      refreshToken: data.session.refresh_token
+    };
+
+    setSessionCookies(cookies, tokens);
+    return tokens;
+  } catch (err) {
+    // 네트워크/DNS 이슈 등으로 Supabase 호출이 실패해도 서버 전체가 500이 되지 않도록 방어
+    console.error('익명 세션 생성 중 오류:', err);
     return null;
   }
-
-  const tokens: SessionTokens = {
-    accessToken: data.session.access_token,
-    refreshToken: data.session.refresh_token
-  };
-
-  setSessionCookies(cookies, tokens);
-  return tokens;
 }
 
 /**
@@ -73,22 +79,28 @@ export async function getUser(cookies: Cookies): Promise<AuthUser | null> {
   const session = getSession(cookies);
   if (!session) return null;
 
-  const supabase = createSupabaseClient();
-  const { data, error } = await supabase.auth.getUser(session.accessToken);
-  if (error || !data.user) return null;
+  try {
+    const supabase = createSupabaseClient();
+    const { data, error } = await supabase.auth.getUser(session.accessToken);
+    if (error || !data.user) return null;
 
-  const nickname =
-    typeof data.user.user_metadata?.nickname === 'string' ? data.user.user_metadata.nickname : null;
-  
-  // 익명 사용자 확인 (email이 null이고 is_anonymous가 true)
-  const isAnonymous = data.user.is_anonymous ?? false;
+    const nickname =
+      typeof data.user.user_metadata?.nickname === 'string' ? data.user.user_metadata.nickname : null;
 
-  return { 
-    id: data.user.id, 
-    email: data.user.email ?? null, 
-    nickname,
-    isAnonymous
-  };
+    // 익명 사용자 확인 (email이 null이고 is_anonymous가 true)
+    const isAnonymous = data.user.is_anonymous ?? false;
+
+    return {
+      id: data.user.id,
+      email: data.user.email ?? null,
+      nickname,
+      isAnonymous
+    };
+  } catch (err) {
+    // Supabase 호출이 일시적으로 실패해도(네트워크/DNS 등) 페이지 렌더는 계속 진행
+    console.error('사용자 정보 조회 중 오류:', err);
+    return null;
+  }
 }
 
 /**

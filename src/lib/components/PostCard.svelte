@@ -17,7 +17,14 @@
   }
 
   let gradientClass = $derived(pickGradient(post?.id));
-  let excerptText = $derived(post?.content || '');
+  function stripHtml(html: string | undefined): string {
+    return String(html ?? '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  let excerptText = $derived(stripHtml(post?.content));
 </script>
 
 <article class="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg">

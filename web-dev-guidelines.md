@@ -40,8 +40,8 @@
 - ✅ 게시글 CRUD 기능 구현 (생성, 조회, 목록)
 - ✅ Supabase 쿼리 계층 구조 구축 (`src/lib/server/supabase/queries/posts.ts`)
 - ✅ 프로젝트 이름 DramLog로 통일
-- ✅ 날짜 2026-01-23 기준으로 업데이트
-- ✅ Svelte 5로 업그레이드 완료 (Runes 모드 마이그레이션 완료)
+- ✅ 날짜 2026-01-22 기준으로 업데이트
+- ✅ Svelte 5 도입 완료 (신규 컴포넌트는 Runes 모드, 기존 컴포넌트는 점진적 마이그레이션)
 
 ---
 
@@ -55,6 +55,7 @@
   - 데이터베이스: PostgreSQL (Supabase 호스팅)
   - 인증: Supabase Auth (선택 로그인 - 회원가입/로그인/로그아웃/내 글 목록)
   - 스토리지: Supabase Storage (향후 사용 예정)
+- **TipTap**: 리치 텍스트 에디터 (게시글 작성/수정에 사용)
 - **TypeScript**: 타입 안정성 (서버 로직/타입 정의에 사용)
 
 ### 개발 도구
@@ -236,6 +237,7 @@ src/lib/
 │   ├── CommentForm.svelte # 댓글 작성 폼 ✅
 │   ├── CommentList.svelte # 댓글 목록 ✅
 │   ├── CommentItem.svelte # 댓글 아이템 ✅
+│   ├── RichTextEditor.svelte # TipTap 리치 텍스트 에디터 ✅
 │   ├── Toast.svelte      # 토스트 알림 ✅
 │   └── ToastContainer.svelte # 토스트 컨테이너 ✅
 ├── stores/
@@ -416,12 +418,14 @@ Tailwind 기본 간격 사용:
 </style>
 ```
 
-**Svelte 5 마이그레이션 완료 (2026-01-23)**
-- 모든 컴포넌트가 Runes 모드로 마이그레이션 완료
-- `export let` → `let { prop } = $props()`
-- `$: computed = ...` → `let computed = $derived(...)`
-- `$: { ... }` → `$effect(() => { ... })`
-- `createEventDispatcher()` → 함수 props (`let { onevent } = $props()`)
+**Svelte 5 마이그레이션 정책 (2026-01-22~)**
+- 신규 컴포넌트는 Runes 모드로 작성
+- 기존 컴포넌트는 점진적으로 마이그레이션
+- 권장 변환:
+  - `export let` → `let { prop } = $props()`
+  - `$: computed = ...` → `let computed = $derived(...)`
+  - `$: { ... }` → `$effect(() => { ... })`
+  - `createEventDispatcher()` → 함수 props (`let { onevent } = $props()`)
 
 ### 네이밍 규칙
 
@@ -922,4 +926,4 @@ CREATE TABLE posts (
 
 ---
 
-**마지막 업데이트**: 2026-01-22 (감사 보고서 기반 보안 및 코드 품질 개선 완료: RLS 정책 검증, 세션 토큰 적용, SSR 안전성, 문서 동기화)
+**마지막 업데이트**: 2026-01-22 (RichTextEditor 컴포넌트 추가, 기술 스택 반영, 문서 동기화)

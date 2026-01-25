@@ -3,6 +3,10 @@ import type { PageServerLoad, Actions } from './$types';
 import { getPostById, updatePost } from '$lib/server/supabase/queries/posts';
 import { getUser, getSession, getUserOrCreateAnonymous } from '$lib/server/supabase/auth';
 
+function plainTextFromHtml(html: string) {
+  return (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 export const load: PageServerLoad = async ({ params, cookies }) => {
   try {
     const postId = params.id;
@@ -86,7 +90,7 @@ export const actions: Actions = {
         hasErrors = true;
       }
 
-      if (!content || content.trim().length === 0) {
+      if (!content || plainTextFromHtml(content).length === 0) {
         fieldErrors.content = '내용을 입력해주세요.';
         hasErrors = true;
       }
@@ -152,9 +156,14 @@ export const actions: Actions = {
 
       console.error('게시글 수정 오류:', err);
       const errorMessage = err instanceof Error ? err.message : '게시글 수정 중 오류가 발생했습니다.';
-      return fail(500, {
-        error: errorMessage
-      });
+      // 사용자의 입력/권한 문제는 failure로 내려서(use:enhance) UI에서 즉시 에러를 표시할 수 있게 함
+      const status =
+        errorMessage.includes('비밀번호') ? 400 :
+        errorMessage.includes('로그인') ? 401 :
+        errorMessage.includes('본인의') ? 403 :
+        500;
+
+      return fail(status, { error: errorMessage });
     }
   }
 };

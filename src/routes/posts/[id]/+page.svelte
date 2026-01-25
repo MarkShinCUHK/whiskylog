@@ -8,7 +8,7 @@
   
   let { data } = $props();
 
-  // 댓글 기능 활성화 여부 (나중에 true로 변경하면 댓글 기능 활성화)
+  // 댓글 기능 활성화 여부
   const ENABLE_COMMENTS = false;
 
   let comments = $state(data.comments || []);
@@ -55,10 +55,8 @@
     <!-- 본문 -->
     <div class="mb-12">
       <div class="rounded-2xl bg-white/80 backdrop-blur-sm p-8 sm:p-10 ring-1 ring-black/5 shadow-sm">
-        <div class="prose prose-lg max-w-none">
-          <div class="text-gray-700 whitespace-pre-line leading-relaxed text-base sm:text-lg">
-            {data.post.content}
-          </div>
+        <div class="rich-content prose prose-lg max-w-none prose-headings:text-whiskey-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900">
+          {@html data.postHtml}
         </div>
       </div>
     </div>

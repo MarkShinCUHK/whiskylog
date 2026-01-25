@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
+  import { showToast } from '$lib/stores/toast';
   
   let { 
     postId,
@@ -12,11 +13,16 @@
     isLiked?: boolean;
   } = $props();
   
-  // 익명 사용자도 좋아요 가능
-
   let pending = $state(false);
+  let isLoggedIn = $derived(!!$page.data?.user);
 
-  function enhanceToggleLike() {
+  function enhanceToggleLike({ cancel }: { cancel: () => void }) {
+    if (!isLoggedIn) {
+      cancel();
+      showToast('좋아요를 누르려면 로그인이 필요합니다.', 'error');
+      return async () => {};
+    }
+
     const prevLiked = isLiked;
     const prevCount = likeCount;
 
@@ -38,6 +44,12 @@
       // 실패 시 롤백
       likeCount = prevCount;
       isLiked = prevLiked;
+
+      if (result.type === 'failure' && result.data?.error) {
+        showToast(result.data.error, 'error');
+      } else {
+        showToast('좋아요 처리 중 오류가 발생했습니다.', 'error');
+      }
     };
   }
 </script>
@@ -47,12 +59,14 @@
     <input type="hidden" name="postId" value={postId} />
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || !isLoggedIn}
       class="flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium shadow-sm hover:shadow
-        {isLiked
-          ? 'bg-red-100 text-red-700 hover:bg-red-200 ring-1 ring-red-200'
-          : 'bg-white text-gray-700 hover:bg-gray-50 ring-1 ring-black/10'}"
-      title={isLiked ? '좋아요 취소' : '좋아요'}
+        {isLoggedIn
+          ? isLiked
+            ? 'bg-red-100 text-red-700 hover:bg-red-200 ring-1 ring-red-200'
+            : 'bg-white text-gray-700 hover:bg-gray-50 ring-1 ring-black/10'
+          : 'bg-gray-50 text-gray-400 cursor-not-allowed ring-1 ring-black/5'}"
+      title={isLoggedIn ? (isLiked ? '좋아요 취소' : '좋아요') : '로그인이 필요합니다'}
     >
       <svg
         class="w-5 h-5 {isLiked ? 'fill-current' : ''} {pending ? 'opacity-70' : ''}"

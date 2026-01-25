@@ -70,7 +70,7 @@ npm run dev -- --host
    - 수정/삭제: 로그인 글은 작성자만, 익명 글은 RLS에서 허용하되 서버에서 비밀번호 검증으로 보안 보장
    - 익명 글은 user_id와 무관하게 비밀번호로만 수정/삭제 가능 (토큰 만료 시 user_id가 바뀔 수 있음)
 5. ✅ Supabase Anonymous Auth 구현 완료 (익명 사용자도 세션을 가지도록 함)
-5. `.env` 파일에 환경 변수 설정 (위 참조)
+6. `.env` 파일에 환경 변수 설정 (위 참조)
 
 ### 빌드
 
@@ -99,6 +99,7 @@ dramlog/
 │   │   │   ├── CommentForm.svelte
 │   │   │   ├── CommentList.svelte
 │   │   │   ├── CommentItem.svelte
+│   │   │   ├── RichTextEditor.svelte
 │   │   │   ├── Toast.svelte
 │   │   │   └── ToastContainer.svelte
 │   │   └── stores/              # 상태 관리
@@ -220,6 +221,7 @@ dramlog/
 - **Supabase**: PostgreSQL 기반 BaaS
   - 데이터베이스: PostgreSQL (Supabase 호스팅)
   - 인증: Supabase Auth (선택 로그인)
+- **TipTap**: 리치 텍스트 에디터 (게시글 작성/수정)
 - **TypeScript**: 타입 안정성
 - **Vite**: 빌드 도구
 
@@ -244,12 +246,14 @@ DramLog를 위한 따뜻한 색감 (골드, 앰버, 다크 브라운)을 사용�
 
 ## 📅 업데이트 이력
 
+- **2026-01-22**: 문서 업데이트 (RichTextEditor 컴포넌트 추가, 기술 스택 반영)
 - **2026-01-22**: 감사 보고서 기반 보안 및 코드 품질 개선 완료
   - RLS 정책 검증 및 서버 사이드 비밀번호 검증 강화
   - 댓글/좋아요 세션 토큰 적용 (익명 사용자도 사용 가능)
   - SSR 안전성 수정, 회원가입 페이지 런타임 에러 제거
   - 레거시 의존성 정리, 요약(excerpt) 필드 제거
   - 문서 동기화 (익명 글 user_id 정책, RLS 설명 일치)
+- **2026-01-22**: Vercel 배포 완료 (Production: `https://dramlog-topaz.vercel.app`, Node 20 고정, 환경변수/Redirect URL 설정)
 - **2026-01-22**: MVP 6단계 완료 (폼 실시간 검증, 토스트 알림 시스템, 브라우저 자동완성 방지, 반응형 디자인 개선)
 - **2026-01-21**: MVP 6단계 시작 (모던 UI 리프레시: 헤더/배경/전역 스타일, 메인 페이지 정리, 문의 페이지 추가)
 - **2026-01-21**: MVP 5단계 완료 (검색, 페이지네이션, 댓글, 좋아요)
@@ -258,4 +262,3 @@ DramLog를 위한 따뜻한 색감 (골드, 앰버, 다크 브라운)을 사용�
 - **2026-01-20**: MVP 3단계 완료 (게시글 수정/삭제 기능)
 - **2026-01-20**: Supabase 통합 완료
 - **2026-01-20**: 프로젝트 이름 DramLog로 통일
-- **2026-01-22**: Vercel 배포 완료 (Node 20 고정, 환경변수/Redirect URL 설정)

@@ -1,21 +1,22 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
   import { page } from '$app/stores';
   
+  // Svelte 5: form prop을 직접 사용 (SvelteKit form action 결과가 그대로 들어옴)
   let { form } = $props();
 
   let email = $state('');
   let password = $state('');
-  let error = $state('');
   
   // URL 쿼리 파라미터에서 성공 메시지 확인
   let successMessage = $derived($page.url.searchParams.get('success'));
 
   // 서버 액션 응답(form)이 바뀔 때마다 입력값/에러를 갱신
   $effect(() => {
-    if (form?.values?.email) email = form.values.email;
-    if (form?.error) error = form.error;
+    if (form?.values?.email !== undefined) email = form.values.email;
   });
+
+  // 에러는 form을 그대로 사용 (enhance/비-enhance 모두 대응)
+  let error = $derived((form as any)?.error || '');
 </script>
 
 <svelte:head>
@@ -25,15 +26,26 @@
 <div class="max-w-md mx-auto px-4 py-12">
   <h1 class="text-3xl sm:text-4xl font-bold text-whiskey-900 mb-10 tracking-tight text-center">로그인</h1>
 
-  <form method="POST" use:enhance class="rounded-2xl bg-white/80 backdrop-blur-sm p-8 sm:p-10 ring-1 ring-black/5 shadow-sm">
+  <form
+    method="POST"
+    action="/login"
+    data-sveltekit-reload
+    class="rounded-2xl bg-white/80 backdrop-blur-sm p-8 sm:p-10 ring-1 ring-black/5 shadow-sm"
+  >
     {#if successMessage}
-      <div class="mb-6 p-4 bg-green-50/80 border border-green-200/50 rounded-lg text-green-700 text-sm">
+      <div
+        role="status"
+        class="mb-6 p-4 bg-green-50/80 border border-green-200/50 rounded-lg text-green-700 text-sm"
+      >
         {successMessage}
       </div>
     {/if}
     
     {#if error}
-      <div class="mb-6 p-4 bg-red-50/80 border border-red-200/50 rounded-lg text-red-700 text-sm">
+      <div
+        role="alert"
+        class="mb-6 p-4 bg-red-50/80 border border-red-200/50 rounded-lg text-red-700 text-sm"
+      >
         {error}
       </div>
     {/if}

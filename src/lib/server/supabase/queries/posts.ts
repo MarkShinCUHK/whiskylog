@@ -2,6 +2,7 @@ import { createSupabaseClient, createSupabaseClientWithSession } from '../client
 import type { Post, PostRow } from '../types.js';
 import type { SessionTokens } from '../auth.js';
 import crypto from 'node:crypto';
+import sanitizeHtml from 'sanitize-html';
 
 const DEFAULT_AUTHOR_NAME = '익명의 위스키 러버';
 
@@ -37,6 +38,81 @@ function verifyEditPassword(password: string, stored: string | null | undefined)
 
   const actual = crypto.scryptSync(password, salt, expected.length, { N, r, p });
   return crypto.timingSafeEqual(actual, expected);
+}
+
+/**
+ * 게시글 본문 HTML을 안전하게 정리 (XSS 방지)
+ * - TipTap이 생성하는 태그/속성만 allowlist로 허용
+ * - 링크 스킴 제한 + rel 강제
+ * - text-align 스타일만 제한적으로 허용
+ */
+export function sanitizePostHtml(html: string): string {
+  const input = html ?? '';
+
+  return sanitizeHtml(input, {
+    allowedTags: [
+      'p',
+      'br',
+      'strong',
+      'em',
+      'u',
+      's',
+      'blockquote',
+      'ul',
+      'ol',
+      'li',
+      'code',
+      'pre',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'hr',
+      'a',
+      'mark',
+      'span',
+      'div',
+      'table',
+      'thead',
+      'tbody',
+      'tr',
+      'th',
+      'td'
+    ],
+    allowedAttributes: {
+      a: ['href', 'name', 'target', 'rel'],
+      th: ['colspan', 'rowspan'],
+      td: ['colspan', 'rowspan'],
+      p: ['style'],
+      h1: ['style'],
+      h2: ['style'],
+      h3: ['style'],
+      h4: ['style'],
+      h5: ['style'],
+      h6: ['style'],
+      div: ['style'],
+      span: ['style'],
+      table: ['style']
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+    allowProtocolRelative: false,
+    allowedStyles: {
+      '*': {
+        'text-align': [/^left$/, /^right$/, /^center$/, /^justify$/]
+      }
+    },
+    transformTags: {
+      a: (tagName, attribs) => {
+        // rel/target 강제 (새 탭 열기 기본)
+        const next = { ...attribs };
+        if (!next.target) next.target = '_blank';
+        next.rel = 'noopener noreferrer';
+        return { tagName, attribs: next };
+      }
+    }
+  });
 }
 
 /**
@@ -244,11 +320,13 @@ export async function createPost(
     const editPasswordHash =
       needsPassword && input.edit_password ? hashEditPassword(input.edit_password) : null;
 
+    const safeContent = sanitizePostHtml(input.content);
+
     const { data, error } = await supabase
       .from('posts')
       .insert({
         title: input.title,
-        content: input.content,
+        content: safeContent,
         author_name: normalizeAuthorName(input.author_name),
         edit_password_hash: editPasswordHash,
         user_id: input.user_id ?? null,
@@ -400,7 +478,7 @@ export async function updatePost(
     // 업데이트할 필드만 구성
     const updateData: Partial<PostRow> = {};
     if (input.title !== undefined) updateData.title = input.title;
-    if (input.content !== undefined) updateData.content = input.content;
+    if (input.content !== undefined) updateData.content = sanitizePostHtml(input.content);
     if (input.author_name !== undefined) updateData.author_name = normalizeAuthorName(input.author_name);
 
     const { data, error } = await supabase

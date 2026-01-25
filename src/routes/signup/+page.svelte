@@ -1,5 +1,10 @@
 <script lang="ts">
-  let { form } = $props();
+  // Svelte 5: $props() 구조분해는 초기값만 캡처될 수 있어 form 업데이트가 반영되지 않을 수 있음
+  let props = $props();
+  let form = $state(props.form);
+  $effect(() => {
+    form = props.form;
+  });
 
   let email = $state('');
   let nickname = $state('');

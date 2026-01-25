@@ -19,13 +19,6 @@
 
   let pendingDelete = $state(false);
 
-  function handleDeleteClick(e: MouseEvent) {
-    if (!confirm('댓글을 삭제하시겠습니까?')) {
-      e.preventDefault();
-      return;
-    }
-  }
-
   function enhanceDeleteComment() {
     pendingDelete = true;
     return async ({ result }: { result: any }) => {
@@ -56,7 +49,6 @@
         <button
           type="submit"
           class="text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          onclick={handleDeleteClick}
           disabled={pendingDelete}
         >
           삭제
