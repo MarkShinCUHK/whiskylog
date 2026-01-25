@@ -96,7 +96,21 @@ export const actions = {
       // console.log(`서버: sessionTokens 존재 여부:`, !!sessionTokens);
       // console.log(`서버: user.id:`, user.id);
 
-      // Blob URL을 Storage URL로 변환
+      // 게시글을 먼저 생성하여 postId 획득 (이미지 업로드에 필요)
+      // console.log('서버: 게시글 생성 시작...', { title: title?.substring(0, 50) });
+      const post = await createPost(
+        {
+          title,
+          content: content || '', // 일단 원본 HTML 사용 (이미지 업로드 후 업데이트)
+          // 로그인 사용자는 닉네임을 작성자명으로 강제
+          author_name: isLoggedIn ? (user?.nickname || user?.email || undefined) : (author || undefined),
+          edit_password: isLoggedIn ? undefined : editPassword,
+          user_id: user.id // 익명 사용자도 익명 세션의 user_id를 저장
+        },
+        accessToken
+      );
+
+      // Blob URL을 Storage URL로 변환 (postId 사용)
       let finalContent = content || '';
       if (images.length > 0 && blobUrls.length > 0) {
         if (!sessionTokens) {
@@ -111,11 +125,42 @@ export const actions = {
               images,
               blobUrls,
               user.id,
+              post.id, // postId 전달
               sessionTokens
             );
             // console.log('서버: 이미지 업로드 완료, 변환된 HTML 길이:', finalContent.length);
+            
+            // 이미지 업로드가 완료되었으므로 게시글 내용 업데이트
+            if (finalContent !== content) {
+              const { updatePost } = await import('$lib/server/supabase/queries/posts');
+              await updatePost(
+                post.id,
+                {
+                  content: finalContent
+                },
+                {
+                  editPassword: isLoggedIn ? undefined : editPassword,
+                  userId: isLoggedIn ? user.id : undefined
+                },
+                sessionTokens
+              );
+            }
           } catch (error) {
             console.error('서버: 이미지 업로드 오류:', error);
+            // 이미지 업로드 실패 시 게시글 삭제 (트랜잭션 롤백)
+            try {
+              const { deletePost } = await import('$lib/server/supabase/queries/posts');
+              await deletePost(
+                post.id,
+                {
+                  editPassword: isLoggedIn ? undefined : editPassword,
+                  userId: isLoggedIn ? user.id : undefined
+                },
+                sessionTokens
+              );
+            } catch (deleteError) {
+              console.error('서버: 롤백 중 게시글 삭제 실패:', deleteError);
+            }
             return fail(500, {
               error: '이미지 업로드 중 오류가 발생했습니다.',
               fieldErrors: {},
@@ -130,21 +175,6 @@ export const actions = {
       } else {
         // console.log('서버: 이미지가 없거나 Blob URL이 없어서 변환을 건너뜁니다.');
       }
-
-      // 게시글 생성 (queries/posts.ts의 createPost 사용)
-      // 익명 글도 익명 세션의 user_id를 저장 (RLS 정책 적용을 위해)
-      // console.log('서버: 게시글 생성 시작...', { title: title?.substring(0, 50), contentLength: finalContent.length });
-      const post = await createPost(
-        {
-          title,
-          content: finalContent, // 변환된 HTML 사용
-          // 로그인 사용자는 닉네임을 작성자명으로 강제
-          author_name: isLoggedIn ? (user?.nickname || user?.email || undefined) : (author || undefined),
-          edit_password: isLoggedIn ? undefined : editPassword,
-          user_id: user.id // 익명 사용자도 익명 세션의 user_id를 저장
-        },
-        accessToken
-      );
 
       // console.log('서버: 게시글 생성 완료, 리다이렉트:', `/posts/${post.id}`);
       // 게시글 상세 페이지로 리다이렉트 (id는 uuid이므로 string)

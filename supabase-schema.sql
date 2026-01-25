@@ -189,10 +189,14 @@ WITH CHECK (
   AND auth.role() = 'authenticated'
 );
 
--- 삭제: 업로드한 사용자만 삭제 가능 (선택사항)
+-- 삭제: 업로드한 사용자만 삭제 가능
+-- 경로 구조: posts/{userId}/{postId}/image_{index}.{extension}
+-- foldername(name)[0] = 'posts', foldername(name)[1] = userId, foldername(name)[2] = postId
+-- 기존 정책이 있으면 삭제 후 재생성
+DROP POLICY IF EXISTS "Users can delete own post images" ON storage.objects;
 CREATE POLICY "Users can delete own post images"
 ON storage.objects FOR DELETE
 USING (
   bucket_id = 'post-images' 
-  AND auth.uid()::text = (storage.foldername(name))[1]
+  AND auth.uid()::text = (storage.foldername(name))[2]
 );

@@ -764,9 +764,11 @@ Tailwind 기본 간격 사용:
 3. ✅ **Supabase Storage 업로드**
    - Storage 버킷: `post-images` (공개 버킷)
    - RLS 정책: 읽기(모든 사용자), 쓰기(인증된 사용자), 삭제(업로드한 사용자)
-   - 파일 경로: `{userId}/{timestamp}-{random}.{extension}`
+   - 파일 경로: `posts/{userId}/{postId}/image_{index}.{extension}` (리소스 타입 기반 구조)
    - 쿼리 함수: `src/lib/server/supabase/queries/storage.ts`의 `uploadImage()` 사용
    - Blob URL 변환: `src/lib/server/supabase/queries/images.ts`의 `convertBlobUrlsToStorageUrls()` 사용
+   - 게시글 삭제 시 이미지 자동 삭제: `deletePostImages()` 함수로 폴더 전체 삭제
+   - 게시글 수정 시 이미지 관리: 삭제된 이미지 자동 삭제, 새 이미지 업로드
 
 4. ✅ **FormData + File 업로드 규칙**
    - **`use:enhance` 사용 금지**: File 객체가 문자열 `"[object File]"`로 변환되는 문제 발생
@@ -969,4 +971,4 @@ CREATE TABLE posts (
 
 ---
 
-**마지막 업데이트**: 2026-01-22 (이미지 삽입 기능 추가, TipTap Image extension + Supabase Storage 통합, FormData + File 업로드 규칙 추가)
+**마지막 업데이트**: 2026-01-22 (Storage 구조 개선: 리소스 타입 기반 구조 적용, 게시글 삭제/수정 시 이미지 자동 관리 기능 추가)

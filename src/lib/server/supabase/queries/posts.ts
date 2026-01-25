@@ -3,6 +3,7 @@ import type { Post, PostRow } from '../types.js';
 import type { SessionTokens } from '../auth.js';
 import crypto from 'node:crypto';
 import sanitizeHtml from 'sanitize-html';
+import { deletePostImages } from './storage.js';
 
 const DEFAULT_AUTHOR_NAME = '익명의 위스키 러버';
 
@@ -588,6 +589,18 @@ export async function deletePost(
       }
       if (auth.userId !== authRow.user_id) {
         throw new Error('본인의 게시글만 삭제할 수 있습니다.');
+      }
+    }
+
+    // 게시글 삭제 전에 이미지 폴더 삭제
+    const userId = authRow.user_id;
+    if (userId) {
+      const imageFolderPath = `posts/${userId}/${id}`;
+      try {
+        await deletePostImages(imageFolderPath, sessionTokens);
+      } catch (imageError) {
+        // 이미지 삭제 실패해도 게시글 삭제는 진행 (로그만 기록)
+        console.warn(`게시글 이미지 삭제 실패 (postId: ${id}), 게시글은 삭제됩니다.`, imageError);
       }
     }
 

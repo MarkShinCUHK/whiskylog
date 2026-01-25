@@ -51,12 +51,16 @@ function generateFileName(originalName: string): string {
  * 이미지를 Supabase Storage에 업로드
  * @param file 업로드할 이미지 파일
  * @param userId 사용자 ID (파일 경로에 사용)
+ * @param postId 게시글 ID (파일 경로에 사용)
+ * @param imageIndex 이미지 인덱스 (파일명에 사용)
  * @param sessionTokens 세션 토큰 (RLS 정책 적용을 위해 필요)
  * @returns 공개 URL
  */
 export async function uploadImage(
   file: File,
   userId: string,
+  postId: string,
+  imageIndex: number,
   sessionTokens?: SessionTokens
 ): Promise<string> {
   try {
@@ -81,10 +85,13 @@ export async function uploadImage(
     // 파일명 안전하게 처리
     const originalFileName = file.name || 'image.jpg';
     
-    // 고유한 파일명 생성
-    const fileName = generateFileName(originalFileName);
-    // 파일 경로: {userId}/{fileName}
-    const filePath = `${userId}/${fileName}`;
+    // 확장자 추출 (원본 확장자 유지)
+    const extension = originalFileName && originalFileName.includes('.') 
+      ? originalFileName.split('.').pop()?.toLowerCase() || 'webp'
+      : 'webp';
+    
+    // 파일 경로: posts/{userId}/{postId}/image_{index}.{extension}
+    const filePath = `posts/${userId}/${postId}/image_${imageIndex}.${extension}`;
 
     // 파일을 ArrayBuffer로 변환
     const arrayBuffer = await file.arrayBuffer();
@@ -164,5 +171,58 @@ export async function deleteImage(
   } catch (error) {
     console.error('이미지 삭제 오류:', error);
     throw error;
+  }
+}
+
+/**
+ * 게시글의 모든 이미지 삭제
+ * @param folderPath Storage 내 폴더 경로 (예: posts/{userId}/{postId})
+ * @param sessionTokens 세션 토큰
+ */
+export async function deletePostImages(
+  folderPath: string,
+  sessionTokens?: SessionTokens
+): Promise<void> {
+  try {
+    const supabase = sessionTokens
+      ? createSupabaseClientWithSession(sessionTokens)
+      : createSupabaseClient();
+
+    // 폴더 내 모든 파일 목록 조회
+    const { data: files, error: listError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .list(folderPath);
+
+    if (listError) {
+      // 폴더가 없거나 비어있으면 에러 무시 (이미 삭제된 경우)
+      if (listError.message.includes('not found') || listError.message.includes('does not exist')) {
+        return;
+      }
+      console.error('이미지 목록 조회 오류:', listError);
+      throw new Error(`이미지 목록 조회에 실패했습니다: ${listError.message}`);
+    }
+
+    if (!files || files.length === 0) {
+      // 폴더가 비어있으면 성공으로 처리
+      return;
+    }
+
+    // 모든 파일 경로 생성
+    const filePaths = files.map((file) => `${folderPath}/${file.name}`);
+
+    // 모든 파일 삭제
+    const { error: deleteError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .remove(filePaths);
+
+    if (deleteError) {
+      console.error('이미지 삭제 오류:', deleteError);
+      // 삭제 실패해도 게시글 삭제는 진행 (로그만 기록)
+      console.warn(`게시글 이미지 삭제 실패 (폴더: ${folderPath}), 게시글은 삭제됩니다.`);
+    }
+  } catch (error) {
+    console.error('게시글 이미지 삭제 오류:', error);
+    // 에러가 발생해도 게시글 삭제는 진행 (로그만 기록)
+    console.warn(`게시글 이미지 삭제 중 오류 발생 (폴더: ${folderPath}), 게시글은 삭제됩니다.`);
   }
 }

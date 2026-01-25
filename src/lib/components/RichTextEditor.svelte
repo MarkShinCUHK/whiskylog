@@ -10,7 +10,7 @@
   import { TableRow } from '@tiptap/extension-table-row';
   import { TableHeader } from '@tiptap/extension-table-header';
   import { TableCell } from '@tiptap/extension-table-cell';
-  import Image from '@tiptap/extension-image';
+  import { ResizableImage } from '$lib/client/tiptap/resizableImage';
 
   let {
     value = '',
@@ -152,7 +152,7 @@
             class: 'border border-gray-300 px-4 py-2'
           }
         }),
-        Image.configure({
+        ResizableImage.configure({
           inline: true,
           allowBase64: false,
           HTMLAttributes: {

@@ -203,6 +203,9 @@ dramlog/
 - ✅ Blob URL 임시 표시 (클라이언트에서 즉시 미리보기)
 - ✅ Supabase Storage 업로드 (게시글 발행 시 자동 업로드)
 - ✅ FormData + File 업로드 규칙 적용 (`use:enhance` 대신 수동 FormData 생성)
+- ✅ Storage 구조 개선: `posts/{userId}/{postId}/image_{index}.{extension}` (리소스 타입 기반)
+- ✅ 게시글 삭제 시 이미지 자동 삭제 (폴더 전체 삭제)
+- ✅ 게시글 수정 시 이미지 관리 (삭제된 이미지 자동 삭제, 새 이미지 업로드)
 
 #### MVP 7단계: Supabase Anonymous Auth + RLS 설정 (완료 ✅)
 - ✅ Supabase Anonymous Auth 구현 (익명 사용자도 세션을 가지도록 함)
@@ -256,6 +259,7 @@ DramLog를 위한 따뜻한 색감 (골드, 앰버, 다크 브라운)을 사용�
 
 ## 📅 업데이트 이력
 
+- **2026-01-22**: Storage 구조 개선 (리소스 타입 기반 구조, 게시글 삭제 시 이미지 자동 삭제)
 - **2026-01-22**: 이미지 삽입 기능 추가 (TipTap Image extension + Supabase Storage, FormData + File 업로드 규칙)
 - **2026-01-22**: 문서 업데이트 (RichTextEditor 컴포넌트 추가, 기술 스택 반영)
 - **2026-01-22**: 감사 보고서 기반 보안 및 코드 품질 개선 완료

@@ -145,6 +145,13 @@ export const actions: Actions = {
         index++;
       }
 
+      // 기존 게시글의 이미지 경로 추출
+      const existingImageRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+      const existingMatches = Array.from((post.content || '').matchAll(existingImageRegex));
+      const existingImageUrls = existingMatches
+        .map((m) => m[1])
+        .filter((url) => url && !url.startsWith('blob:')); // Blob URL 제외
+
       // Blob URL을 Storage URL로 변환
       let finalContent = content || '';
       if (images.length > 0 && blobUrls.length > 0 && sessionTokens) {
@@ -155,6 +162,7 @@ export const actions: Actions = {
             images,
             blobUrls,
             userId,
+            postId, // postId 전달
             {
               accessToken: sessionTokens.accessToken,
               refreshToken: sessionTokens.refreshToken
@@ -171,6 +179,38 @@ export const actions: Actions = {
               author: author || ''
             }
           });
+        }
+      }
+
+      // 새 게시글의 이미지 경로 추출
+      const newImageRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+      const newMatches = Array.from((finalContent || '').matchAll(newImageRegex));
+      const newImageUrls = newMatches
+        .map((m) => m[1])
+        .filter((url) => url && !url.startsWith('blob:')); // Blob URL 제외
+
+      // 삭제된 이미지 경로 계산 (기존에 있지만 새에는 없는 이미지)
+      const deletedImageUrls = existingImageUrls.filter((url) => !newImageUrls.includes(url));
+
+      // 삭제된 이미지 파일 삭제
+      if (deletedImageUrls.length > 0 && sessionTokens) {
+        for (const imageUrl of deletedImageUrls) {
+          try {
+            // Storage URL에서 경로 추출
+            // 예: https://xxx.supabase.co/storage/v1/object/public/post-images/posts/userId/postId/image_1.webp
+            // → posts/userId/postId/image_1.webp
+            const urlMatch = imageUrl.match(/post-images\/(.+)$/);
+            if (urlMatch && urlMatch[1]) {
+              const filePath = urlMatch[1];
+              await deleteImage(filePath, {
+                accessToken: sessionTokens.accessToken,
+                refreshToken: sessionTokens.refreshToken
+              });
+            }
+          } catch (deleteError) {
+            // 이미지 삭제 실패해도 게시글 수정은 진행 (로그만 기록)
+            console.warn(`이미지 삭제 실패 (URL: ${imageUrl}), 게시글은 수정됩니다.`, deleteError);
+          }
         }
       }
 
