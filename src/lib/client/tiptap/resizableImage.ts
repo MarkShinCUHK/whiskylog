@@ -48,6 +48,28 @@ export const ResizableImage = Image.extend({
     };
   },
 
+  renderHTML({ HTMLAttributes }) {
+    // 기존 class 처리 (문자열 또는 배열일 수 있음)
+    const existingClass = HTMLAttributes.class;
+    let finalClass = 'editor-image';
+    if (existingClass) {
+      if (Array.isArray(existingClass)) {
+        finalClass = [...existingClass, 'editor-image'].join(' ');
+      } else {
+        finalClass = `${existingClass} editor-image`;
+      }
+    }
+    
+    return [
+      'img',
+      {
+        ...HTMLAttributes,
+        class: finalClass,
+        'data-resizable': 'true'
+      }
+    ];
+  },
+
   addNodeView(): NodeViewRenderer {
     return ({ node, view, getPos }) => {
       const container = document.createElement('div');

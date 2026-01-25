@@ -16,6 +16,28 @@
     if (data.comments) comments = data.comments;
   });
 
+  // HTML의 width/height 속성을 CSS로 강제 적용
+  $effect(() => {
+    if (typeof window !== 'undefined' && data.postHtml) {
+      setTimeout(() => {
+        const postContent = document.querySelector('.post-content');
+        if (postContent) {
+          const images = postContent.querySelectorAll('img.editor-image');
+          images.forEach((img) => {
+            const htmlWidth = img.getAttribute('width');
+            const htmlHeight = img.getAttribute('height');
+            if (htmlWidth) {
+              img.style.setProperty('width', `${htmlWidth}px`, 'important');
+            }
+            if (htmlHeight) {
+              img.style.setProperty('height', `${htmlHeight}px`, 'important');
+            }
+          });
+        }
+      }, 100);
+    }
+  });
+
   function handleDeleteSubmit(e: Event) {
     if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
       e.preventDefault();
@@ -55,7 +77,7 @@
     <!-- 본문 -->
     <div class="mb-12">
       <div class="rounded-2xl bg-white/80 backdrop-blur-sm p-8 sm:p-10 ring-1 ring-black/5 shadow-sm">
-        <div class="rich-content prose prose-lg max-w-none prose-headings:text-whiskey-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900">
+        <div class="post-content rich-content prose prose-lg prose-img:max-w-none max-w-none prose-headings:text-whiskey-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900">
           {@html data.postHtml}
         </div>
       </div>

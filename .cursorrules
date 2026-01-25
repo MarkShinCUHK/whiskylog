@@ -68,8 +68,8 @@
   - 툴바는 `{#if editorState.editor}` 블록으로 조건부 렌더링
   - 에디터 영역(`<div bind:this={editorRoot}>`)은 항상 렌더링
 - **이미지 삽입 규칙** (필수):
-  - **TipTap Image Extension**: `@tiptap/extension-image` 사용
-  - **초기 설정**: `Image.configure({ allowBase64: true })` - 클라이언트에서 Blob URL 임시 표시용
+  - **TipTap Image Extension**: `ResizableImage` 사용 (커스텀 확장, `@tiptap/extension-image` 기반)
+  - **초기 설정**: `ResizableImage.configure({ inline: true, allowBase64: false })` - width/height 속성 지원
   - **파일 형식 제한**: JPG, PNG, WebP, GIF만 허용 (클라이언트/서버 양쪽에서 검증)
   - **Blob URL 임시 표시**: 클라이언트에서 `URL.createObjectURL(file)`로 Blob URL 생성하여 에디터에 삽입
   - **File 객체 추적**: `Map<string, File>`로 Blob URL과 File 객체 매핑 저장
@@ -114,6 +114,10 @@ src/
 │   │   ├── RichTextEditor.svelte
 │   │   ├── Toast.svelte
 │   │   └── ToastContainer.svelte
+│   ├── client/
+│   │   └── tiptap/
+│   │       ├── resizableImage.ts (커스텀 TipTap Image 확장)
+│   │       └── imageResize.ts (이미지 리사이즈 핸들 로직)
 │   ├── stores/ (상태 관리)
 │   │   └── toast.ts (토스트 알림 store)
 │   └── server/ (서버 전용 코드)
@@ -511,4 +515,4 @@ src/
 
 ## 추가 참조
 - 상세 가이드라인: `web-dev-guidelines.md` 참조
-- 마지막 업데이트: 2026-01-22 (Storage 구조 개선: 리소스 타입 기반 구조 적용, 게시글 삭제/수정 시 이미지 자동 관리 기능 추가)
+- 마지막 업데이트: 2026-01-22 (RichTextEditor 및 ResizableImage 개선)

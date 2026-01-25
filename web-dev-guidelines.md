@@ -751,8 +751,8 @@ Tailwind 기본 간격 사용:
 **목표**: TipTap 리치 텍스트 에디터에 이미지 삽입 기능 추가
 
 1. ✅ **TipTap Image Extension 통합**
-   - `@tiptap/extension-image` 패키지 사용
-   - `Image.configure({ allowBase64: true })` 설정 (Blob URL 임시 표시용)
+   - `ResizableImage` 커스텀 확장 사용 (`@tiptap/extension-image` 기반)
+   - `ResizableImage.configure({ inline: true, allowBase64: false })` 설정 (width/height 속성 지원)
    - 에디터 툴바에 "이미지" 버튼 추가
 
 2. ✅ **클라이언트 이미지 처리**
@@ -971,4 +971,4 @@ CREATE TABLE posts (
 
 ---
 
-**마지막 업데이트**: 2026-01-22 (Storage 구조 개선: 리소스 타입 기반 구조 적용, 게시글 삭제/수정 시 이미지 자동 관리 기능 추가)
+**마지막 업데이트**: 2026-01-22 (RichTextEditor 및 ResizableImage 개선)

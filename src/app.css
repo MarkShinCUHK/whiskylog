@@ -82,3 +82,21 @@
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
 }
+
+/* 게시글 콘텐츠 이미지 스타일 (에디터 이미지 보호) */
+.post-content.prose img.editor-image,
+.post-content.rich-content img.editor-image,
+.rich-content.prose img.editor-image {
+  /* width와 height는 HTML 속성을 그대로 사용 */
+  /* height: auto 제거 - HTML의 height 속성이 적용되도록 함 */
+  max-width: none !important;  /* prose의 max-width 제거 */
+  display: inline-block;
+  margin: 0.5rem 0;
+}
+
+/* 에디터 이미지가 포함된 p 태그 스타일 */
+.post-content p:has(img.editor-image),
+.rich-content p:has(img.editor-image) {
+  margin: 0.5rem 0;
+  line-height: 1.5;
+}
