@@ -10,15 +10,18 @@
   import { TableRow } from '@tiptap/extension-table-row';
   import { TableHeader } from '@tiptap/extension-table-header';
   import { TableCell } from '@tiptap/extension-table-cell';
+  import Image from '@tiptap/extension-image';
 
   let {
     value = '',
     placeholder = '내용을 입력하세요…',
-    onChange
+    onChange,
+    onImageAdd
   }: {
     value?: string;
     placeholder?: string;
     onChange?: (html: string, text: string) => void;
+    onImageAdd?: (blobUrl: string, file: File) => void;
   } = $props();
 
   // 공식 문서 패턴: editorState 객체로 상태 관리
@@ -52,6 +55,45 @@
     editorState.editor.chain().focus().setLink({ href: url.trim() }).run();
   }
 
+  // 이미지 파일 형식 검증 (JPG, PNG, WebP, GIF)
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+  
+  function isValidImageType(file: File): boolean {
+    return ALLOWED_IMAGE_TYPES.includes(file.type.toLowerCase());
+  }
+
+  let fileInputRef: HTMLInputElement | null = null;
+
+  function handleImageSelect() {
+    if (!editorState.editor) return;
+    fileInputRef?.click();
+  }
+
+  function handleFileChange(event: Event) {
+    if (!editorState.editor) return;
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    
+    if (!file) return;
+
+    // 파일 형식 검증
+    if (!isValidImageType(file)) {
+      alert('지원하는 이미지 형식은 JPG, PNG, WebP, GIF입니다.');
+      input.value = '';
+      return;
+    }
+
+    // Blob URL 생성하여 에디터에 삽입
+    const blobUrl = URL.createObjectURL(file);
+    editorState.editor.chain().focus().setImage({ src: blobUrl }).run();
+
+    // 부모 컴포넌트에 이미지 파일 정보 전달 (Blob URL과 File 객체 매핑)
+    onImageAdd?.(blobUrl, file);
+
+    // input 초기화 (같은 파일을 다시 선택할 수 있도록)
+    input.value = '';
+  }
+
   // 외부에서 value가 바뀌면 에디터에 반영 (무한 루프 방지용)
   let lastExternalValue = $state('');
   $effect(() => {
@@ -79,7 +121,7 @@
         } as any),
         Underline,
         Link.configure({
-          openOnClick: false,
+          openOnClick: true,
           autolink: true,
           linkOnPaste: true
         }),
@@ -109,6 +151,13 @@
           HTMLAttributes: {
             class: 'border border-gray-300 px-4 py-2'
           }
+        }),
+        Image.configure({
+          inline: true,
+          allowBase64: false,
+          HTMLAttributes: {
+            class: 'max-w-full h-auto rounded-lg my-2'
+          }
         })
       ],
       editorProps: {
@@ -118,7 +167,8 @@
             'prose-p:my-2 prose-headings:mt-4 prose-headings:mb-2 prose-pre:bg-gray-900/90 prose-pre:text-gray-100 ' +
             'prose-a:text-whiskey-700 hover:prose-a:text-whiskey-800 prose-table:w-full prose-table:border-collapse ' +
             'prose-th:border prose-th:border-gray-300 prose-th:bg-gray-50 prose-th:px-4 prose-th:py-2 ' +
-            'prose-td:border prose-td:border-gray-300 prose-td:px-4 prose-td:py-2'
+            'prose-td:border prose-td:border-gray-300 prose-td:px-4 prose-td:py-2 ' +
+            'prose-img:max-w-full prose-img:h-auto prose-img:rounded-lg prose-img:my-2'
         }
       },
       onTransaction: ({ editor }) => {
@@ -349,6 +399,17 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
           </svg>
         </button>
+        <button
+          type="button"
+          class={actionBtnClass()}
+          title="이미지 삽입"
+          onclick={() => handleImageSelect()}
+          disabled={!editorState.editor}
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </button>
       </div>
 
       <div class="h-6 w-px bg-black/10 mx-1"></div>
@@ -498,6 +559,14 @@
     >
       <div bind:this={editorRoot}></div>
     </div>
+    <!-- 숨겨진 파일 입력 -->
+    <input
+      type="file"
+      accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+      bind:this={fileInputRef}
+      onchange={handleFileChange}
+      class="hidden"
+    />
     <p class="mt-2 text-xs text-gray-500">
       팁: 링크는 URL을 입력하면 되고, 표는 ‘표 추가’로 삽입 후 셀을 클릭해 편집할 수 있어요.
     </p>

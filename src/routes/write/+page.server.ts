@@ -1,13 +1,14 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { createPost } from '$lib/server/supabase/queries/posts';
 import { getUser, getUserOrCreateAnonymous, getSession } from '$lib/server/supabase/auth';
+import { convertBlobUrlsToStorageUrls } from '$lib/server/supabase/queries/images.js';
 
 function plainTextFromHtml(html: string) {
   return (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 export const actions = {
-  default: async ({ request, cookies }) => {
+  create: async ({ request, cookies }) => {
     try {
       const formData = await request.formData();
       const title = formData.get('title')?.toString();
@@ -64,13 +65,79 @@ export const actions = {
       // 세션 토큰 가져오기 (RLS 정책 적용을 위해)
       const session = getSession(cookies);
       const accessToken = session?.accessToken;
+      const sessionTokens = session
+        ? {
+            accessToken: session.accessToken,
+            refreshToken: session.refreshToken
+          }
+        : undefined;
+
+      // 이미지 파일 추출 및 업로드
+      const images: File[] = [];
+      const blobUrls: string[] = [];
+      let index = 0;
+      while (true) {
+        const imageFile = formData.get(`image_${index}`);
+        const blobUrl = formData.get(`image_url_${index}`)?.toString();
+        if (!imageFile || !blobUrl) break;
+        
+        // File 객체인지 확인
+        if (imageFile instanceof File) {
+          images.push(imageFile);
+          blobUrls.push(blobUrl);
+          // console.log(`서버: image_${index} 추가됨 - Blob URL: ${blobUrl}, 파일명: ${imageFile.name}, 크기: ${imageFile.size} bytes`);
+        } else {
+          // console.error(`서버: image_${index}가 File 객체가 아닙니다:`, typeof imageFile, imageFile);
+        }
+        index++;
+      }
+      
+      // console.log(`서버: 추출된 이미지 개수: ${images.length}, Blob URL 개수: ${blobUrls.length}`);
+      // console.log(`서버: sessionTokens 존재 여부:`, !!sessionTokens);
+      // console.log(`서버: user.id:`, user.id);
+
+      // Blob URL을 Storage URL로 변환
+      let finalContent = content || '';
+      if (images.length > 0 && blobUrls.length > 0) {
+        if (!sessionTokens) {
+          // console.error('서버: sessionTokens가 없어서 이미지 업로드를 건너뜁니다.');
+          // sessionTokens가 없으면 익명 세션을 생성하거나 에러를 반환
+          // 일단 경고만 하고 Blob URL을 그대로 유지
+        } else {
+          try {
+            // console.log('서버: 이미지 업로드 시작...');
+            finalContent = await convertBlobUrlsToStorageUrls(
+              content || '',
+              images,
+              blobUrls,
+              user.id,
+              sessionTokens
+            );
+            // console.log('서버: 이미지 업로드 완료, 변환된 HTML 길이:', finalContent.length);
+          } catch (error) {
+            console.error('서버: 이미지 업로드 오류:', error);
+            return fail(500, {
+              error: '이미지 업로드 중 오류가 발생했습니다.',
+              fieldErrors: {},
+              values: {
+                title: title || '',
+                content: content || '',
+                author: author || ''
+              }
+            });
+          }
+        }
+      } else {
+        // console.log('서버: 이미지가 없거나 Blob URL이 없어서 변환을 건너뜁니다.');
+      }
 
       // 게시글 생성 (queries/posts.ts의 createPost 사용)
       // 익명 글도 익명 세션의 user_id를 저장 (RLS 정책 적용을 위해)
+      // console.log('서버: 게시글 생성 시작...', { title: title?.substring(0, 50), contentLength: finalContent.length });
       const post = await createPost(
         {
           title,
-          content,
+          content: finalContent, // 변환된 HTML 사용
           // 로그인 사용자는 닉네임을 작성자명으로 강제
           author_name: isLoggedIn ? (user?.nickname || user?.email || undefined) : (author || undefined),
           edit_password: isLoggedIn ? undefined : editPassword,
@@ -79,6 +146,7 @@ export const actions = {
         accessToken
       );
 
+      // console.log('서버: 게시글 생성 완료, 리다이렉트:', `/posts/${post.id}`);
       // 게시글 상세 페이지로 리다이렉트 (id는 uuid이므로 string)
       throw redirect(303, `/posts/${post.id}`);
     } catch (error) {
@@ -88,7 +156,7 @@ export const actions = {
       }
 
       // 에러 상세 정보 로깅
-      console.error('게시글 작성 오류:', error);
+      // console.error('게시글 작성 오류:', error);
       const errorMessage = error instanceof Error ? error.message : '게시글 작성 중 오류가 발생했습니다.';
       
       return fail(500, {

@@ -1,0 +1,168 @@
+import { createSupabaseClient, createSupabaseClientWithSession } from '../client.js';
+import type { SessionTokens } from '../auth.js';
+import crypto from 'node:crypto';
+
+const STORAGE_BUCKET = 'post-images';
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+
+/**
+ * 파일 형식 검증 (서버 사이드)
+ * FormData의 File 객체는 type이나 name 속성이 없을 수 있으므로 안전하게 처리
+ */
+function validateImageType(file: File): boolean {
+  // MIME 타입으로 검증 (있는 경우)
+  if (file.type) {
+    const mimeType = file.type.toLowerCase();
+    if (ALLOWED_IMAGE_TYPES.includes(mimeType)) {
+      return true;
+    }
+  }
+
+  // 파일명 확장자로 검증 (MIME 타입이 없거나 일치하지 않는 경우)
+  if (file.name) {
+    const fileName = file.name.toLowerCase();
+    const extension = fileName.split('.').pop();
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+    
+    if (extension && allowedExtensions.includes(extension)) {
+      return true;
+    }
+  }
+
+  // type과 name이 모두 없으면 기본적으로 허용 (서버에서 처리)
+  // 실제로는 이런 경우가 없어야 하지만 안전성을 위해
+  return false;
+}
+
+/**
+ * 고유한 파일명 생성
+ * 형식: {timestamp}-{random}-{originalName}
+ */
+function generateFileName(originalName: string): string {
+  const timestamp = Date.now();
+  const random = crypto.randomBytes(8).toString('hex');
+  const extension = originalName && originalName.includes('.') 
+    ? originalName.split('.').pop()?.toLowerCase() || 'jpg'
+    : 'jpg';
+  return `${timestamp}-${random}.${extension}`;
+}
+
+/**
+ * 이미지를 Supabase Storage에 업로드
+ * @param file 업로드할 이미지 파일
+ * @param userId 사용자 ID (파일 경로에 사용)
+ * @param sessionTokens 세션 토큰 (RLS 정책 적용을 위해 필요)
+ * @returns 공개 URL
+ */
+export async function uploadImage(
+  file: File,
+  userId: string,
+  sessionTokens?: SessionTokens
+): Promise<string> {
+  try {
+    // 디버깅: File 객체 정보 확인
+    // console.log('File 객체 정보:', {
+    //   name: file.name,
+    //   type: file.type,
+    //   size: file.size,
+    //   hasArrayBuffer: typeof file.arrayBuffer === 'function'
+    // });
+
+    // 파일 형식 검증
+    if (!validateImageType(file)) {
+      throw new Error('지원하는 이미지 형식은 JPG, PNG, WebP, GIF입니다.');
+    }
+
+    // Supabase 클라이언트 생성 (세션 토큰이 있으면 사용)
+    const supabase = sessionTokens
+      ? createSupabaseClientWithSession(sessionTokens)
+      : createSupabaseClient();
+
+    // 파일명 안전하게 처리
+    const originalFileName = file.name || 'image.jpg';
+    
+    // 고유한 파일명 생성
+    const fileName = generateFileName(originalFileName);
+    // 파일 경로: {userId}/{fileName}
+    const filePath = `${userId}/${fileName}`;
+
+    // 파일을 ArrayBuffer로 변환
+    const arrayBuffer = await file.arrayBuffer();
+    const fileData = new Uint8Array(arrayBuffer);
+
+    // MIME 타입 결정 (file.type이 없으면 확장자로 추론)
+    let contentType = file.type;
+    if (!contentType && originalFileName) {
+      const extension = originalFileName.split('.').pop()?.toLowerCase();
+      const mimeMap: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'webp': 'image/webp',
+        'gif': 'image/gif'
+      };
+      contentType = extension ? (mimeMap[extension] || 'image/jpeg') : 'image/jpeg';
+    } else if (!contentType) {
+      contentType = 'image/jpeg'; // 기본값
+    }
+
+    // Supabase Storage에 업로드
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(filePath, fileData, {
+        contentType: contentType,
+        upsert: false // 기존 파일 덮어쓰기 방지
+      });
+
+    if (error) {
+      console.error('이미지 업로드 오류:', error);
+      throw new Error(`이미지 업로드에 실패했습니다: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error('이미지 업로드 후 데이터를 받아오지 못했습니다.');
+    }
+
+    // 공개 URL 생성
+    const { data: urlData } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(filePath);
+
+    if (!urlData?.publicUrl) {
+      throw new Error('공개 URL을 생성하지 못했습니다.');
+    }
+
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error('이미지 업로드 오류:', error);
+    throw error;
+  }
+}
+
+/**
+ * 이미지 삭제 (선택사항)
+ * @param filePath Storage 내 파일 경로
+ * @param sessionTokens 세션 토큰
+ */
+export async function deleteImage(
+  filePath: string,
+  sessionTokens?: SessionTokens
+): Promise<void> {
+  try {
+    const supabase = sessionTokens
+      ? createSupabaseClientWithSession(sessionTokens)
+      : createSupabaseClient();
+
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .remove([filePath]);
+
+    if (error) {
+      console.error('이미지 삭제 오류:', error);
+      throw new Error(`이미지 삭제에 실패했습니다: ${error.message}`);
+    }
+  } catch (error) {
+    console.error('이미지 삭제 오류:', error);
+    throw error;
+  }
+}

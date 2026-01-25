@@ -2,6 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getPostById, updatePost } from '$lib/server/supabase/queries/posts';
 import { getUser, getSession, getUserOrCreateAnonymous } from '$lib/server/supabase/auth';
+import { convertBlobUrlsToStorageUrls } from '$lib/server/supabase/queries/images.js';
 
 function plainTextFromHtml(html: string) {
   return (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -131,12 +132,54 @@ export const actions: Actions = {
         sessionTokens = getSession(cookies);
       }
 
+      // 이미지 파일 추출 및 업로드
+      const images: File[] = [];
+      const blobUrls: string[] = [];
+      let index = 0;
+      while (true) {
+        const imageFile = formData.get(`image_${index}`) as File | null;
+        const blobUrl = formData.get(`image_url_${index}`)?.toString();
+        if (!imageFile || !blobUrl) break;
+        images.push(imageFile);
+        blobUrls.push(blobUrl);
+        index++;
+      }
+
+      // Blob URL을 Storage URL로 변환
+      let finalContent = content || '';
+      if (images.length > 0 && blobUrls.length > 0 && sessionTokens) {
+        try {
+          const userId = isAnonymousPost ? (await getUserOrCreateAnonymous(cookies)).id : (user?.id || '');
+          finalContent = await convertBlobUrlsToStorageUrls(
+            content || '',
+            images,
+            blobUrls,
+            userId,
+            {
+              accessToken: sessionTokens.accessToken,
+              refreshToken: sessionTokens.refreshToken
+            }
+          );
+        } catch (error) {
+          console.error('이미지 업로드 오류:', error);
+          return fail(500, {
+            error: '이미지 업로드 중 오류가 발생했습니다.',
+            fieldErrors: {},
+            values: {
+              title: title || '',
+              content: content || '',
+              author: author || ''
+            }
+          });
+        }
+      }
+
       // 게시글 수정
       await updatePost(
         postId,
         {
         title,
-        content,
+        content: finalContent, // 변환된 HTML 사용
           author_name: isAnonymousPost ? (author || undefined) : (user?.nickname || user?.email || undefined)
         },
         {

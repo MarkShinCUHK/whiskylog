@@ -79,7 +79,8 @@ export function sanitizePostHtml(html: string): string {
       'tbody',
       'tr',
       'th',
-      'td'
+      'td',
+      'img'
     ],
     allowedAttributes: {
       a: ['href', 'name', 'target', 'rel'],
@@ -94,7 +95,8 @@ export function sanitizePostHtml(html: string): string {
       h6: ['style'],
       div: ['style'],
       span: ['style'],
-      table: ['style']
+      table: ['style'],
+      img: ['src', 'alt', 'title', 'width', 'height', 'class']
     },
     allowedSchemes: ['http', 'https', 'mailto'],
     allowProtocolRelative: false,

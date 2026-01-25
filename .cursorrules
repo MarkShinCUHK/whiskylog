@@ -67,6 +67,15 @@
   - `bind:this={editorRoot}` 사용, `onMount`에서 바로 초기화
   - 툴바는 `{#if editorState.editor}` 블록으로 조건부 렌더링
   - 에디터 영역(`<div bind:this={editorRoot}>`)은 항상 렌더링
+- **이미지 삽입 규칙** (필수):
+  - **TipTap Image Extension**: `@tiptap/extension-image` 사용
+  - **초기 설정**: `Image.configure({ allowBase64: true })` - 클라이언트에서 Blob URL 임시 표시용
+  - **파일 형식 제한**: JPG, PNG, WebP, GIF만 허용 (클라이언트/서버 양쪽에서 검증)
+  - **Blob URL 임시 표시**: 클라이언트에서 `URL.createObjectURL(file)`로 Blob URL 생성하여 에디터에 삽입
+  - **File 객체 추적**: `Map<string, File>`로 Blob URL과 File 객체 매핑 저장
+  - **onImageAdd 콜백**: RichTextEditor에서 `onImageAdd?: (blobUrl: string, file: File) => void` prop 제공
+  - **발행 시 업로드**: 게시글 발행 시 Blob URL을 Supabase Storage URL로 변환
+  - **HTML Sanitization**: `sanitizePostHtml` 함수에 `img` 태그 및 속성(`src`, `alt`, `title`, `width`, `height`, `class`) 허용
 
 ## 파일 구조 (SvelteKit)
 ```
@@ -115,7 +124,9 @@ src/
 │           └── queries/
 │               ├── posts.ts (게시글 쿼리 함수)
 │               ├── comments.ts (댓글 쿼리 함수)
-│               └── likes.ts (좋아요 쿼리 함수)
+│               ├── likes.ts (좋아요 쿼리 함수)
+│               ├── storage.ts (이미지 업로드 함수)
+│               └── images.ts (Blob URL 변환 함수)
 ├── app.css (Tailwind CSS)
 └── app.html
 ```
@@ -135,6 +146,7 @@ src/
 12. ✅ Supabase 통합 (글 작성/목록/상세 - 완전 전환 완료)
 13. ✅ 게시글 수정 기능 (`/posts/[id]/edit`)
 14. ✅ 게시글 삭제 기능 (상세 페이지)
+15. ✅ 이미지 삽입 기능 (TipTap Image extension + Supabase Storage)
 
 ## 다음 단계 (우선순위 순)
 
@@ -346,7 +358,9 @@ src/
      - ✅ 컴포넌트: `Pagination.svelte`
 
 3. **성능 최적화**
-   - **이미지 최적화** (향후 이미지 업로드 기능 추가 시):
+   - **이미지 최적화** (향후 추가 예정):
+     - ✅ 기본 업로드 기능 구현 완료 (Supabase Storage)
+     - 🔄 이미지 압축 기능 (향후 추가)
      - Lazy loading
      - WebP 형식 지원
      - 썸네일 생성
@@ -354,7 +368,8 @@ src/
    - **DB 최적화**: 인덱스 추가, 쿼리 최적화, 연결 풀링 (Supabase에서 자동 관리)
 
 ### 향후 추가 예정
-- 이미지 업로드 (로컬 스토리지 또는 클라우드 스토리지)
+- ✅ 이미지 업로드 (Supabase Storage) - 기본 기능 구현 완료
+- 🔄 이미지 압축 기능 (향후 추가)
 - 사용자 프로필 페이지
 - 북마크 기능
 - 태그 시스템
@@ -418,6 +433,7 @@ src/
 
 ## UX 규칙 (상호작용)
 - 좋아요/댓글 같은 "작은 액션"은 가능하면 **redirect 없이 `use:enhance`로 즉시 반영** (낙관적 업데이트 + 실패 시 롤백)
+- **File 업로드가 포함된 폼**: `use:enhance` 사용 금지, 수동 FormData + fetch 사용
 
 ## 폼 검증 규칙 (필수)
 - **Svelte 반응성 보장**: 반응형 객체(`clientFieldErrors` 등)의 속성을 `delete`할 때는 반드시 객체를 재할당해야 함
@@ -444,7 +460,53 @@ src/
 - **쿼리 계층**: `src/lib/server/supabase/queries/posts.ts`가 DB 접근의 단일 창구
 - **보안**: ANON_KEY는 RLS로 제어되므로 안전하지만, Service Role Key는 절대 사용하지 않음
 - **세션 토큰**: RLS 정책 적용을 위해 `createSupabaseClientWithSession()` 함수 사용 (SessionTokens 객체 전달)
+- **Supabase Storage** (이미지 업로드):
+  - ✅ Storage 버킷: `post-images` (공개 버킷)
+  - ✅ RLS 정책: 읽기(모든 사용자), 쓰기(인증된 사용자), 삭제(업로드한 사용자)
+  - ✅ 파일 경로: `{userId}/{timestamp}-{random}.{extension}`
+  - ✅ 쿼리 함수: `src/lib/server/supabase/queries/storage.ts`의 `uploadImage()` 사용
+  - ✅ Blob URL 변환: `src/lib/server/supabase/queries/images.ts`의 `convertBlobUrlsToStorageUrls()` 사용
+  - ✅ 파일 형식 검증: JPG, PNG, WebP, GIF (클라이언트/서버 양쪽에서 검증)
+  - ✅ 파일명 확장자로 MIME 타입 추론 (서버에서 `file.type`이 없을 경우)
+
+## FormData + File 업로드 규칙 (필수)
+**SvelteKit에서 File 객체를 전송할 때는 반드시 다음 규칙을 따라야 함:**
+1. **`use:enhance` 사용 금지**: File 객체가 문자열 `"[object File]"`로 변환되는 문제 발생
+2. **수동 FormData 생성**: 
+   - ❌ `new FormData(e.target as HTMLFormElement)` (form 기반)
+   - ✅ `new FormData()` (완전 수동 생성)
+3. **모든 필드 직접 append**:
+   ```typescript
+   const formData = new FormData();
+   formData.append('title', title);
+   formData.append('content', content);
+   // File 추가 시 세 번째 인자 file.name 명시 (매우 중요!)
+   formData.append(`image_${index}`, file, file.name);
+   ```
+4. **action 이름 명시적 지정**:
+   - ❌ `default` action은 form submit 전용, fetch로 호출 불가
+   - ✅ 명시적 action 이름 사용 (`create`, `update` 등)
+   - ✅ `fetch('?/create', { method: 'POST', body: formData })`
+5. **onsubmit 핸들링**:
+   ```typescript
+   <form onsubmit={handleSubmit}>
+   async function handleSubmit(e: SubmitEvent) {
+     e.preventDefault();
+     const formData = new FormData();
+     // ... 필드 추가
+     const res = await fetch('?/create', { method: 'POST', body: formData });
+     const result = await res.json();
+     // redirect 타입도 처리
+     if (result.type === 'success' || result.type === 'redirect') {
+       if (result.location) window.location.href = result.location;
+     }
+   }
+   ```
+6. **이미지 파일 추적**:
+   - 클라이언트에서 `Map<string, File>`로 Blob URL과 File 객체 매핑
+   - HTML에서 Blob URL 추출 후 해당 File 객체를 FormData에 추가
+   - 서버에서 Blob URL을 Supabase Storage URL로 변환
 
 ## 추가 참조
 - 상세 가이드라인: `web-dev-guidelines.md` 참조
-- 마지막 업데이트: 2026-01-22 (RichTextEditor 컴포넌트 추가, 문서 동기화)
+- 마지막 업데이트: 2026-01-22 (이미지 삽입 기능 추가, FormData + File 업로드 규칙 추가)

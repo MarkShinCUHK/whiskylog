@@ -112,7 +112,9 @@ dramlog/
 │   │           └── queries/
 │   │               ├── posts.ts    # 게시글 쿼리 함수
 │   │               ├── comments.ts # 댓글 쿼리 함수
-│   │               └── likes.ts    # 좋아요 쿼리 함수
+│   │               ├── likes.ts    # 좋아요 쿼리 함수
+│   │               ├── storage.ts  # 이미지 업로드 함수
+│   │               └── images.ts   # Blob URL 변환 함수
 │   ├── routes/
 │   │   ├── +layout.svelte       # 공통 레이아웃
 │   │   ├── +layout.server.ts    # 전역 세션 로드 (Header에서 사용)
@@ -195,6 +197,13 @@ dramlog/
     - 익명 글도 익명 세션의 `user_id`를 가지지만, 토큰 만료 시 `user_id`가 바뀔 수 있으므로 비밀번호로만 관리
     - 로그아웃 상태에서만 비밀번호로 수정/삭제 가능
 
+#### 이미지 삽입 기능 (완료 ✅)
+- ✅ TipTap Image extension 통합 (`@tiptap/extension-image`)
+- ✅ 이미지 파일 선택 및 에디터에 삽입 (JPG, PNG, WebP, GIF 지원)
+- ✅ Blob URL 임시 표시 (클라이언트에서 즉시 미리보기)
+- ✅ Supabase Storage 업로드 (게시글 발행 시 자동 업로드)
+- ✅ FormData + File 업로드 규칙 적용 (`use:enhance` 대신 수동 FormData 생성)
+
 #### MVP 7단계: Supabase Anonymous Auth + RLS 설정 (완료 ✅)
 - ✅ Supabase Anonymous Auth 구현 (익명 사용자도 세션을 가지도록 함)
 - ✅ RLS (Row Level Security) 정책 설정 완료
@@ -207,7 +216,8 @@ dramlog/
 - ✅ 익명 사용자 회원가입 시 글 전환 기능 (`convertAnonymousPostsToUserPosts()`)
 
 ### 향후 추가 예정
-- 이미지 업로드 (Supabase Storage)
+- ✅ 이미지 업로드 (Supabase Storage) - 기본 기능 구현 완료
+- 🔄 이미지 압축 기능 (향후 추가)
 - 사용자 프로필 페이지
 - 북마크 기능
 - 태그 시스템
@@ -246,6 +256,7 @@ DramLog를 위한 따뜻한 색감 (골드, 앰버, 다크 브라운)을 사용�
 
 ## 📅 업데이트 이력
 
+- **2026-01-22**: 이미지 삽입 기능 추가 (TipTap Image extension + Supabase Storage, FormData + File 업로드 규칙)
 - **2026-01-22**: 문서 업데이트 (RichTextEditor 컴포넌트 추가, 기술 스택 반영)
 - **2026-01-22**: 감사 보고서 기반 보안 및 코드 품질 개선 완료
   - RLS 정책 검증 및 서버 사이드 비밀번호 검증 강화

@@ -54,7 +54,7 @@
 - **Supabase**: PostgreSQL 기반 BaaS (Backend as a Service)
   - 데이터베이스: PostgreSQL (Supabase 호스팅)
   - 인증: Supabase Auth (선택 로그인 - 회원가입/로그인/로그아웃/내 글 목록)
-  - 스토리지: Supabase Storage (향후 사용 예정)
+  - 스토리지: Supabase Storage (이미지 업로드 기능 구현 완료 ✅)
 - **TipTap**: 리치 텍스트 에디터 (게시글 작성/수정에 사용)
 - **TypeScript**: 타입 안정성 (서버 로직/타입 정의에 사용)
 
@@ -250,7 +250,9 @@ src/lib/
         └── queries/
             ├── posts.ts   # 게시글 쿼리 함수 ✅
             ├── comments.ts # 댓글 쿼리 함수 ✅
-            └── likes.ts   # 좋아요 쿼리 함수 ✅
+            ├── likes.ts   # 좋아요 쿼리 함수 ✅
+            ├── storage.ts # 이미지 업로드 함수 ✅
+            └── images.ts  # Blob URL 변환 함수 ✅
 ```
 
 ### 컴포넌트 예시
@@ -459,7 +461,12 @@ Tailwind 기본 간격 사용:
 ### SvelteKit 최적화
 - SSR 활용으로 초기 로딩 속도 향상
 - 코드 스플리팅 자동 적용
-- 이미지 최적화 (`@sveltejs/enhanced-img` 사용 고려)
+- 이미지 최적화 (향후 추가 예정)
+  - ✅ 기본 업로드 기능 구현 완료 (Supabase Storage)
+  - 🔄 이미지 압축 기능 (향후 추가)
+  - Lazy loading
+  - WebP 형식 지원
+  - 썸네일 생성
 
 ### Tailwind 최적화
 - Production 빌드 시 미사용 CSS 자동 제거
@@ -731,12 +738,47 @@ Tailwind 기본 간격 사용:
      - ✅ **컴포넌트**: `Pagination.svelte`
 
 3. **성능 최적화**
-   - **이미지 최적화** (향후 이미지 업로드 기능 추가 시):
+   - **이미지 최적화** (향후 추가 예정):
+     - ✅ 기본 업로드 기능 구현 완료 (Supabase Storage)
+     - 🔄 이미지 압축 기능 (향후 추가)
      - Lazy loading
      - WebP 형식 지원
      - 썸네일 생성
    - **코드 스플리팅**: SvelteKit의 자동 코드 스플리팅 활용
    - **DB 최적화**: 인덱스 추가, 쿼리 최적화, 연결 풀링 (Supabase에서 자동 관리)
+
+### 이미지 삽입 기능 (완료 ✅)
+**목표**: TipTap 리치 텍스트 에디터에 이미지 삽입 기능 추가
+
+1. ✅ **TipTap Image Extension 통합**
+   - `@tiptap/extension-image` 패키지 사용
+   - `Image.configure({ allowBase64: true })` 설정 (Blob URL 임시 표시용)
+   - 에디터 툴바에 "이미지" 버튼 추가
+
+2. ✅ **클라이언트 이미지 처리**
+   - 파일 형식 제한: JPG, PNG, WebP, GIF (클라이언트/서버 양쪽에서 검증)
+   - `URL.createObjectURL(file)`로 Blob URL 생성하여 에디터에 즉시 삽입
+   - `Map<string, File>`로 Blob URL과 File 객체 매핑 저장
+   - `onImageAdd` 콜백으로 부모 컴포넌트에 이미지 정보 전달
+
+3. ✅ **Supabase Storage 업로드**
+   - Storage 버킷: `post-images` (공개 버킷)
+   - RLS 정책: 읽기(모든 사용자), 쓰기(인증된 사용자), 삭제(업로드한 사용자)
+   - 파일 경로: `{userId}/{timestamp}-{random}.{extension}`
+   - 쿼리 함수: `src/lib/server/supabase/queries/storage.ts`의 `uploadImage()` 사용
+   - Blob URL 변환: `src/lib/server/supabase/queries/images.ts`의 `convertBlobUrlsToStorageUrls()` 사용
+
+4. ✅ **FormData + File 업로드 규칙**
+   - **`use:enhance` 사용 금지**: File 객체가 문자열 `"[object File]"`로 변환되는 문제 발생
+   - **수동 FormData 생성**: `new FormData()`로 완전 수동 생성
+   - **File append 시 `file.name` 명시**: `formData.append(name, file, file.name)` (매우 중요!)
+   - **action 이름 명시적 지정**: `default` 대신 `create`, `update` 등 명시적 이름 사용
+   - **onsubmit 핸들링**: `preventDefault` 후 수동 FormData 생성 + `fetch` 사용
+   - **이미지 파일 추적**: HTML에서 Blob URL 추출 후 해당 File 객체를 FormData에 추가
+
+5. ✅ **HTML Sanitization**
+   - `sanitizePostHtml` 함수에 `img` 태그 및 속성(`src`, `alt`, `title`, `width`, `height`, `class`) 허용
+   - 서버에서 HTML 검증 및 정리
 
 ### MVP 7단계: Supabase Anonymous Auth + RLS 설정 (완료 ✅)
 **목표**: 익명 사용자도 세션을 가지도록 하고, RLS 정책으로 보안 강화
@@ -780,7 +822,8 @@ Tailwind 기본 간격 사용:
    - `createSupabaseClientWithSession` 함수 시그니처 수정
 
 ### 향후 추가 예정
-- 이미지 업로드 (로컬 스토리지 또는 클라우드 스토리지)
+- ✅ 이미지 업로드 (Supabase Storage) - 기본 기능 구현 완료
+- 🔄 이미지 압축 기능 (향후 추가)
 - 사용자 프로필 페이지
 - 북마크 기능
 - 태그 시스템
@@ -926,4 +969,4 @@ CREATE TABLE posts (
 
 ---
 
-**마지막 업데이트**: 2026-01-22 (RichTextEditor 컴포넌트 추가, 기술 스택 반영, 문서 동기화)
+**마지막 업데이트**: 2026-01-22 (이미지 삽입 기능 추가, TipTap Image extension + Supabase Storage 통합, FormData + File 업로드 규칙 추가)

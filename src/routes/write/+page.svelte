@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
   import { page } from '$app/stores';
   import { showToast } from '$lib/stores/toast';
   import RichTextEditor from '$lib/components/RichTextEditor.svelte';
@@ -18,6 +17,9 @@
   // 클라이언트 사이드 실시간 유효성 검사 (blur 이벤트 후에만 표시)
   let clientFieldErrors = $state<Record<string, string>>({});
   let touchedFields = $state<Record<string, boolean>>({}); // blur된 필드만 추적
+
+  // 이미지 파일 추적 (Blob URL -> File 객체 매핑)
+  let imageFiles = $state<Map<string, File>>(new Map());
 
   // form이 업데이트되면 상태 동기화
   $effect(() => {
@@ -122,6 +124,87 @@
       author = $page.data.user.nickname || $page.data.user.email || author;
     }
   });
+
+  // ⭐ 핵심: use:enhance 대신 수동 submit 핸들링
+  async function handleSubmit(e: SubmitEvent) {
+    e.preventDefault();
+
+    const formData = new FormData();
+
+    // 텍스트 필드
+    formData.append('title', title);
+    formData.append('content', content);
+    if (author) {
+      formData.append('author', author);
+    }
+
+    if (!isLoggedIn) {
+      if (editPassword) {
+        formData.append('editPassword', editPassword);
+      }
+      if (editPasswordConfirm) {
+        formData.append('editPasswordConfirm', editPasswordConfirm);
+      }
+    }
+
+    // 이미지 파일 추가
+    const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+    const matches = Array.from(content.matchAll(imgRegex));
+    const blobUrls = matches
+      .map((m: RegExpMatchArray) => m[1])
+      .filter((src: string) => src.startsWith('blob:'));
+
+    blobUrls.forEach((blobUrl, index) => {
+      const file = imageFiles.get(blobUrl);
+      if (file instanceof File) {
+        formData.append(`image_${index}`, file, file.name);
+        formData.append(`image_url_${index}`, blobUrl);
+      }
+    });
+
+    try {
+      const res = await fetch('?/create', {
+        method: 'POST',
+        body: formData
+      });
+
+      // 응답 상태 확인
+      if (!res.ok) {
+        // console.error('서버 응답 오류:', res.status, res.statusText);
+        const errorData = await res.json().catch(() => ({}));
+        showToast(errorData.error ?? `서버 오류 (${res.status})`, 'error');
+        return;
+      }
+
+      const result = await res.json();
+      // console.log('클라이언트: 서버 응답:', result);
+
+      // SvelteKit action 응답 타입: 'success' | 'failure' | 'redirect'
+      if (result.type === 'success' || result.type === 'redirect') {
+        showToast('게시글이 작성되었습니다.', 'success');
+        imageFiles.clear();
+        // redirect인 경우 location으로 이동
+        if (result.location) {
+          window.location.href = result.location;
+        } else if (result.type === 'redirect') {
+          // redirect 타입이지만 location이 없는 경우
+          // console.warn('Redirect 응답이지만 location이 없습니다:', result);
+        }
+      } else if (result.type === 'failure') {
+        // 실패 응답 처리
+        const errorMsg = result.data?.error ?? '게시글 작성에 실패했습니다.';
+        showToast(errorMsg, 'error');
+        // console.error('게시글 작성 실패:', result.data);
+      } else {
+        // 알 수 없는 응답 타입
+        // console.error('알 수 없는 응답 타입:', result);
+        showToast('예상치 못한 응답을 받았습니다.', 'error');
+      }
+    } catch (error) {
+      // console.error('폼 제출 오류:', error);
+      showToast('게시글 작성 중 오류가 발생했습니다.', 'error');
+    }
+  }
 </script>
 
 <svelte:head>
@@ -133,27 +216,7 @@
 
   <form
     method="POST"
-    use:enhance={() => {
-      return async ({ result, update }) => {
-        // 기본 업데이트 먼저 수행
-        await update();
-        
-        // 성공/실패 시 토스트 표시
-        if (result.type === 'success') {
-          try {
-            showToast('게시글이 작성되었습니다.', 'success');
-          } catch (e) {
-            console.error('토스트 표시 오류:', e);
-          }
-        } else if (result.type === 'failure' && result.data?.error) {
-          try {
-            showToast(result.data.error, 'error');
-          } catch (e) {
-            console.error('토스트 표시 오류:', e);
-          }
-        }
-      };
-    }}
+    onsubmit={handleSubmit}
     class="rounded-2xl bg-white/80 backdrop-blur-sm p-8 sm:p-10 ring-1 ring-black/5 shadow-sm"
   >
     <!-- 에러 메시지 -->
@@ -214,8 +277,7 @@
       <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
         내용
       </label>
-      <!-- 폼 제출 호환을 위해 hidden input 유지 -->
-      <input type="hidden" name="content" value={content} />
+      <!-- hidden input 제거 (수동 FormData 사용) -->
       <div class="{allFieldErrors.content ? 'ring-2 ring-red-300 rounded-2xl' : ''}">
         <RichTextEditor
           value={content}
@@ -225,6 +287,12 @@
             contentText = text;
             touchedFields.content = true;
             validateContent();
+          }}
+          onImageAdd={(blobUrl, file) => {
+            // Blob URL과 File 객체를 매핑하여 저장
+            // console.log('클라이언트: 이미지 추가됨 - Blob URL:', blobUrl, 'File:', file.name, file.type, file.size);
+            imageFiles.set(blobUrl, file);
+            // console.log('클라이언트: imageFiles Map 크기:', imageFiles.size);
           }}
         />
       </div>

@@ -22,6 +22,9 @@
   let clientFieldErrors = $state<Record<string, string>>({});
   let touchedFields = $state<Record<string, boolean>>({}); // blur된 필드만 추적
 
+  // 이미지 파일 추적 (Blob URL -> File 객체 매핑)
+  let imageFiles = $state<Map<string, File>>(new Map());
+
   // 초기값 설정 및 form 업데이트 시 동기화
   $effect(() => {
     if (form?.values?.title !== undefined) title = form.values.title;
@@ -103,7 +106,24 @@
 
   <form
     method="POST"
-    use:enhance={() => {
+    use:enhance={({ formData, cancel }) => {
+      // HTML에서 Blob URL 추출
+      const html = formData.get('content')?.toString() || '';
+      const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+      const matches = Array.from(html.matchAll(imgRegex));
+      const blobUrls = matches
+        .map(match => match[1])
+        .filter(url => url.startsWith('blob:'));
+
+      // Blob URL에 대응하는 File 객체들을 FormData에 추가
+      blobUrls.forEach((blobUrl, index) => {
+        const file = imageFiles.get(blobUrl);
+        if (file) {
+          formData.append(`image_${index}`, file);
+          formData.append(`image_url_${index}`, blobUrl);
+        }
+      });
+
       return async ({ result, update }) => {
         try {
           // 기본 업데이트 먼저 수행 (redirect 포함)
@@ -113,6 +133,8 @@
           if (result) {
             if (result.type === 'success' || result.type === 'redirect') {
               showToast('게시글이 수정되었습니다.', 'success');
+              // 성공 시 이미지 파일 맵 초기화
+              imageFiles.clear();
             } else if (result.type === 'failure' && result.data?.error) {
               showToast(result.data.error, 'error');
             }
@@ -195,6 +217,10 @@
             contentText = text;
             touchedFields.content = true;
             validateContent();
+          }}
+          onImageAdd={(blobUrl, file) => {
+            // Blob URL과 File 객체를 매핑하여 저장
+            imageFiles.set(blobUrl, file);
           }}
         />
       </div>

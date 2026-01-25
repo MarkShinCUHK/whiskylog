@@ -165,3 +165,34 @@ WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = user_id);
 CREATE POLICY "Users can delete own likes"
 ON likes FOR DELETE
 USING (auth.uid() = user_id);
+
+-- Storage 버킷 생성 (게시글 이미지용)
+-- Supabase 대시보드에서 Storage → Create bucket으로 생성하거나 아래 SQL 실행
+-- 버킷 이름: post-images
+
+-- Storage 버킷 생성 (이미 존재하면 무시)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('post-images', 'post-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage RLS 정책 설정
+-- 읽기: 모든 사용자 읽기 가능
+CREATE POLICY "Anyone can read post images"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'post-images');
+
+-- 업로드: 인증된 사용자(익명 포함)만 업로드 가능
+CREATE POLICY "Authenticated users can upload post images"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'post-images' 
+  AND auth.role() = 'authenticated'
+);
+
+-- 삭제: 업로드한 사용자만 삭제 가능 (선택사항)
+CREATE POLICY "Users can delete own post images"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'post-images' 
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
