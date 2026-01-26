@@ -98,9 +98,23 @@
     <header class="mb-10">
       <h1 class="text-3xl sm:text-4xl font-bold text-whiskey-900 mb-6 leading-tight tracking-tight">{data.post.title}</h1>
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-sm text-gray-600">
-        <div class="flex items-center gap-4">
-          <span class="font-semibold text-gray-900">{data.post.author}</span>
-          <span class="text-gray-500">{data.post.createdAt}</span>
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center gap-4">
+            <span class="font-semibold text-gray-900">{data.post.author}</span>
+            <span class="text-gray-500">{data.post.createdAt}</span>
+          </div>
+          {#if data.post.tags && data.post.tags.length > 0}
+            <div class="flex flex-wrap gap-2">
+              {#each data.post.tags as tag}
+                <a
+                  href={`/posts?tag=${encodeURIComponent(tag)}`}
+                  class="inline-flex items-center rounded-full bg-whiskey-50 px-3 py-1 text-xs font-semibold text-whiskey-700 ring-1 ring-whiskey-100"
+                >
+                  #{tag}
+                </a>
+              {/each}
+            </div>
+          {/if}
         </div>
         <div class="flex items-center gap-4">
           {#if data.post.views !== undefined}

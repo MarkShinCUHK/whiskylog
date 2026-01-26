@@ -20,7 +20,13 @@
 <div class="max-w-6xl xl:max-w-7xl mx-auto px-4 xl:px-8 py-12">
   <div class="mb-12">
     <h1 class="text-3xl sm:text-4xl font-bold text-whiskey-900 mb-3 tracking-tight">게시글 목록</h1>
-    <p class="text-lg text-gray-600">위스키에 대한 다양한 리뷰와 정보를 확인하세요.</p>
+    {#if data.tag}
+      <p class="text-lg text-gray-600">
+        <span class="font-semibold text-gray-900">#{data.tag}</span> 태그 게시글
+      </p>
+    {:else}
+      <p class="text-lg text-gray-600">위스키에 대한 다양한 리뷰와 정보를 확인하세요.</p>
+    {/if}
   </div>
 
   {#if $navigating}

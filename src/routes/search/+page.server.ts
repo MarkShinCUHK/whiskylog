@@ -1,4 +1,4 @@
-import { searchPosts, getSearchPostCount } from '$lib/server/supabase/queries/posts';
+import { searchPosts, getSearchPostCount, listPostsByTag, getPostCountByTag } from '$lib/server/supabase/queries/posts';
 
 const PER_PAGE = 12;
 
@@ -18,9 +18,13 @@ export async function load({ url }) {
     };
   }
 
+  const normalized = q.trim();
+  const isTagSearch = normalized.startsWith('#');
+  const tag = isTagSearch ? normalized.slice(1) : '';
+
   const [posts, totalCount] = await Promise.all([
-    searchPosts(q, { limit: PER_PAGE, offset }),
-    getSearchPostCount(q)
+    isTagSearch ? listPostsByTag(tag, PER_PAGE, offset) : searchPosts(normalized, { limit: PER_PAGE, offset }),
+    isTagSearch ? getPostCountByTag(tag) : getSearchPostCount(normalized)
   ]);
 
   const totalPages = Math.max(1, Math.ceil((totalCount || 0) / PER_PAGE));
@@ -34,4 +38,3 @@ export async function load({ url }) {
     posts
   };
 }
-

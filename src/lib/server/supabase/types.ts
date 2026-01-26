@@ -29,6 +29,7 @@ export type Post = {
   createdAt: string; // YYYY-MM-DD
   userId?: string | null; // 로그인 글 소유자 (익명 글이면 null)
   isAnonymous?: boolean; // 익명 글 여부
+  tags?: string[]; // 태그 목록
   views?: number;
   likes?: number;
 };

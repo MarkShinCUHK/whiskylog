@@ -10,6 +10,7 @@
       title?: string;
       content?: string;
       author?: string;
+      tags?: string;
     };
   };
 
@@ -19,6 +20,7 @@
   let content = $state('');
   let contentText = $state('');
   let author = $state('');
+  let tags = $state('');
   let error = $state('');
   let fieldErrors = $state<Record<string, string>>({});
   let editPassword = $state('');
@@ -39,6 +41,7 @@
         contentText = plainTextFromHtml(data.post.content);
       }
       if (data.post.author !== undefined) author = data.post.author;
+      if (Array.isArray(data.post.tags)) tags = data.post.tags.join(', ');
     }
   });
 
@@ -47,6 +50,7 @@
     if (form?.values?.title !== undefined) title = form.values.title;
     if (form?.values?.content !== undefined) content = form.values.content;
     if (form?.values?.author !== undefined) author = form.values.author;
+    if (form?.values?.tags !== undefined) tags = form.values.tags;
     if (form?.error !== undefined) error = form.error;
     if (form?.fieldErrors !== undefined) fieldErrors = form.fieldErrors || {};
     if (form?.values?.content !== undefined) {
@@ -126,6 +130,9 @@
     formData.append('content', content);
     if (author) {
       formData.append('author', author);
+    }
+    if (tags) {
+      formData.append('tags', tags);
     }
 
     if (data?.post?.isAnonymous && !isLoggedIn) {
@@ -257,6 +264,22 @@
       {#if allFieldErrors.title}
         <p class="mt-2 text-sm text-red-600">{allFieldErrors.title}</p>
       {/if}
+    </div>
+
+    <!-- 태그 -->
+    <div class="mb-6">
+      <label for="tags" class="block text-sm font-medium text-gray-700 mb-2">
+        태그 (쉼표로 구분)
+      </label>
+      <input
+        type="text"
+        id="tags"
+        name="tags"
+        bind:value={tags}
+        placeholder="예: 버번, 셰리, 데일리"
+        class="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
+      />
+      <p class="mt-2 text-sm text-gray-500">태그는 쉼표로 구분되며 최대 10개까지 저장됩니다.</p>
     </div>
 
     <!-- 내용 -->

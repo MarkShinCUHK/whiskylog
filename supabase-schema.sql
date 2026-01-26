@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS posts (
   is_anonymous BOOLEAN DEFAULT false,
   -- 조회수
   view_count INTEGER NOT NULL DEFAULT 0,
+  -- 태그 (검색/필터)
+  tags TEXT[] DEFAULT '{}'::TEXT[],
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -37,6 +39,9 @@ ALTER TABLE posts
   ADD COLUMN IF NOT EXISTS view_count INTEGER NOT NULL DEFAULT 0;
 
 ALTER TABLE posts
+  ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'::TEXT[];
+
+ALTER TABLE posts
   ALTER COLUMN author_name SET DEFAULT '익명의 위스키 러버';
 
 -- (선택) user_id FK는 Supabase Auth 사용 시에만 적용 권장
@@ -47,6 +52,7 @@ ALTER TABLE posts
 -- 인덱스 생성 (성능 최적화)
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_author_name ON posts(author_name);
+CREATE INDEX IF NOT EXISTS idx_posts_tags ON posts USING GIN (tags);
 
 -- 조회수 증가 함수 (RLS 우회용, 서버에서 호출)
 CREATE OR REPLACE FUNCTION increment_post_view(p_post_id UUID)

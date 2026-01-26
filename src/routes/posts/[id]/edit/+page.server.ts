@@ -9,6 +9,13 @@ function plainTextFromHtml(html: string) {
   return (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function parseTags(value: string) {
+  return (value || '')
+    .split(',')
+    .map((tag) => tag.trim().replace(/^#/, ''))
+    .filter((tag) => tag.length > 0);
+}
+
 export const load: PageServerLoad = async ({ params, cookies }) => {
   try {
     const postId = params.id;
@@ -86,6 +93,7 @@ export const actions: Actions = {
       const content = formData.get('content')?.toString();
       const author = formData.get('author')?.toString();
       const editPassword = formData.get('editPassword')?.toString();
+      const tags = formData.get('tags')?.toString() ?? '';
       console.log('[EDIT] 폼 데이터:', { 
         title: title?.substring(0, 50), 
         contentLength: content?.length,
@@ -133,7 +141,8 @@ export const actions: Actions = {
           values: {
             title: title || '',
             content: content || '',
-            author: author || ''
+            author: author || '',
+            tags: tags || ''
           }
         });
       }
@@ -244,7 +253,8 @@ export const actions: Actions = {
             values: {
               title: title || '',
               content: content || '',
-              author: author || ''
+              author: author || '',
+              tags: tags || ''
             }
           });
         }
@@ -302,7 +312,8 @@ export const actions: Actions = {
         {
         title,
         content: finalContent, // 변환된 HTML 사용
-          author_name: isAnonymousPost ? (author || undefined) : (user?.nickname || user?.email || undefined)
+          author_name: isAnonymousPost ? (author || undefined) : (user?.nickname || user?.email || undefined),
+          tags: parseTags(tags)
         },
         {
           userId: isAnonymousPost ? null : (user?.id ?? null), // 익명 글은 항상 null

@@ -7,6 +7,13 @@ function plainTextFromHtml(html: string) {
   return (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function parseTags(value: string): string[] {
+  return (value || '')
+    .split(',')
+    .map((tag) => tag.trim().replace(/^#/, ''))
+    .filter((tag) => tag.length > 0);
+}
+
 export const actions = {
   create: async ({ request, cookies }) => {
     let title = '';
@@ -14,11 +21,13 @@ export const actions = {
     let author = '';
     let editPassword = '';
     let editPasswordConfirm = '';
+    let tags = '';
     try {
       const formData = await request.formData();
       title = formData.get('title')?.toString() ?? '';
       content = formData.get('content')?.toString() ?? '';
       author = formData.get('author')?.toString() ?? '';
+      tags = formData.get('tags')?.toString() ?? '';
       editPassword = formData.get('editPassword')?.toString() ?? '';
       editPasswordConfirm = formData.get('editPasswordConfirm')?.toString() ?? '';
 
@@ -62,7 +71,8 @@ export const actions = {
           values: {
             title: title || '',
             content: content || '',
-            author: author || ''
+            author: author || '',
+            tags: tags || ''
           }
         });
       }
@@ -110,7 +120,8 @@ export const actions = {
           // 로그인 사용자는 닉네임을 작성자명으로 강제
           author_name: isLoggedIn ? (user?.nickname || user?.email || undefined) : (author || undefined),
           edit_password: isLoggedIn ? undefined : editPassword,
-          user_id: user.id // 익명 사용자도 익명 세션의 user_id를 저장
+          user_id: user.id, // 익명 사용자도 익명 세션의 user_id를 저장
+          tags: parseTags(tags)
         },
         accessToken
       );
@@ -172,7 +183,8 @@ export const actions = {
               values: {
                 title: title || '',
                 content: content || '',
-                author: author || ''
+                author: author || '',
+                tags: tags || ''
               }
             });
           }
@@ -199,7 +211,8 @@ export const actions = {
         values: {
           title: title || '',
           content: content || '',
-          author: author || ''
+          author: author || '',
+          tags: tags || ''
         }
       });
     }

@@ -12,6 +12,16 @@ function normalizeAuthorName(author?: string) {
   return trimmed && trimmed.length > 0 ? trimmed : DEFAULT_AUTHOR_NAME;
 }
 
+function normalizeTags(tags?: string[]) {
+  if (!tags || tags.length === 0) return [];
+  const unique = new Set(
+    tags
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0)
+  );
+  return Array.from(unique).slice(0, 10);
+}
+
 /**
  * 비밀번호 해시 생성 (서버 전용)
  * - 저장 포맷: scrypt$N$r$p$saltBase64$hashBase64
@@ -147,6 +157,7 @@ export function mapRowToPost(row: PostRow): Post {
     createdAt: dateStr,
     userId: row.user_id ?? null,
     isAnonymous: row.is_anonymous ?? false,
+    tags: row.tags ?? [],
     // 선택적 필드들 안전하게 처리
     likes: row.like_count ?? undefined,
     views: row.view_count ?? 0,
@@ -187,6 +198,66 @@ export async function listPosts(limit?: number, offset?: number): Promise<Post[]
     console.error('게시글 목록 조회 오류:', error);
     // 에러 발생 시 빈 배열 반환 (UI가 깨지지 않도록)
     return [];
+  }
+}
+
+/**
+ * 태그로 게시글 목록 조회
+ */
+export async function listPostsByTag(
+  tag: string,
+  limit?: number,
+  offset?: number
+): Promise<Post[]> {
+  try {
+    const trimmed = tag.trim();
+    if (!trimmed) return [];
+
+    const supabase = createSupabaseClient();
+    let query = supabase
+      .from('posts')
+      .select('*')
+      .contains('tags', [trimmed])
+      .order('created_at', { ascending: false });
+
+    if (typeof offset === 'number' && offset >= 0 && limit && limit > 0) {
+      query = query.range(offset, offset + limit - 1);
+    } else if (limit && limit > 0) {
+      query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('태그 게시글 조회 오류:', error);
+      throw error;
+    }
+    if (!data || data.length === 0) return [];
+    return data.map(mapRowToPost);
+  } catch (error) {
+    console.error('태그 게시글 조회 오류:', error);
+    return [];
+  }
+}
+
+export async function getPostCountByTag(tag: string): Promise<number> {
+  try {
+    const trimmed = tag.trim();
+    if (!trimmed) return 0;
+
+    const supabase = createSupabaseClient();
+    const { count, error } = await supabase
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .contains('tags', [trimmed]);
+
+    if (error) {
+      console.error('태그 게시글 개수 조회 오류:', error);
+      return 0;
+    }
+    return count ?? 0;
+  } catch (error) {
+    console.error('태그 게시글 개수 조회 오류:', error);
+    return 0;
   }
 }
 
@@ -333,6 +404,7 @@ export async function createPost(
     author_name?: string;
     edit_password?: string;
     user_id?: string | null;
+    tags?: string[];
   },
   accessToken?: string
 ): Promise<Post> {
@@ -365,7 +437,8 @@ export async function createPost(
         author_name: normalizeAuthorName(input.author_name),
         edit_password_hash: editPasswordHash,
         user_id: input.user_id ?? null,
-        is_anonymous: isAnonymous
+        is_anonymous: isAnonymous,
+        tags: normalizeTags(input.tags)
       })
       .select()
       .single();
@@ -453,6 +526,7 @@ export async function updatePost(
     title?: string;
     content?: string;
     author_name?: string;
+    tags?: string[];
   },
   auth: { editPassword?: string; userId?: string | null },
   sessionTokens?: SessionTokens // Optional session tokens for RLS
@@ -515,6 +589,7 @@ export async function updatePost(
     if (input.title !== undefined) updateData.title = input.title;
     if (input.content !== undefined) updateData.content = sanitizePostHtml(input.content);
     if (input.author_name !== undefined) updateData.author_name = normalizeAuthorName(input.author_name);
+    if (input.tags !== undefined) updateData.tags = normalizeTags(input.tags);
 
     const { data, error } = await supabase
       .from('posts')

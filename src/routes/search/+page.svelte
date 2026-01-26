@@ -22,7 +22,11 @@
     <h1 class="text-3xl sm:text-4xl font-bold text-whiskey-900 mb-3 tracking-tight">검색</h1>
     {#if data.q?.trim()}
       <p class="text-lg text-gray-600">
-        <span class="font-semibold text-gray-900">"{data.q}"</span> 검색 결과 ({data.totalCount}개)
+        {#if data.q.trim().startsWith('#')}
+          <span class="font-semibold text-gray-900">#{data.q.trim().slice(1)}</span> 태그 검색 결과 ({data.totalCount}개)
+        {:else}
+          <span class="font-semibold text-gray-900">"{data.q}"</span> 검색 결과 ({data.totalCount}개)
+        {/if}
       </p>
     {:else}
       <p class="text-lg text-gray-600">검색어를 입력해주세요.</p>
@@ -59,4 +63,3 @@
     </div>
   {/if}
 </div>
-
