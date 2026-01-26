@@ -5,8 +5,8 @@
   
   let { 
     postId,
-    likeCount = 0,
-    isLiked = false
+    likeCount: initialLikeCount = 0,
+    isLiked: initialIsLiked = false
   }: {
     postId: string;
     likeCount?: number;
@@ -15,6 +15,13 @@
   
   let pending = $state(false);
   let isLoggedIn = $derived(!!$page.data?.user);
+  let likeCount = $state(0);
+  let isLiked = $state(false);
+
+  $effect(() => {
+    likeCount = initialLikeCount;
+    isLiked = initialIsLiked;
+  });
 
   function enhanceToggleLike({ cancel }: { cancel: () => void }) {
     if (!isLoggedIn) {

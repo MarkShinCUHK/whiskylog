@@ -3,7 +3,17 @@
   import { showToast } from '$lib/stores/toast';
   import RichTextEditor from '$lib/components/RichTextEditor.svelte';
   
-  let { form } = $props();
+  type FormState = {
+    error?: string;
+    fieldErrors?: Record<string, string>;
+    values?: {
+      title?: string;
+      content?: string;
+      author?: string;
+    };
+  };
+
+  let { form }: { form?: FormState } = $props();
   
   let title = $state('');
   let content = $state('');
@@ -295,11 +305,7 @@
             
             // 첫 번째 이미지 업로드 시 토스트 메시지 표시
             if (isFirstImage) {
-              showToast({
-                message: '첫 번째 이미지가 게시글 목록의 썸네일로 사용됩니다.',
-                type: 'info',
-                duration: 4000
-              });
+              showToast('첫 번째 이미지가 게시글 목록의 썸네일로 사용됩니다.', 'success');
             }
           }}
         />

@@ -17,12 +17,11 @@
   );
 </script>
 
-<div
-  class="flex items-center gap-3 {bgColor} text-white px-4 py-3 rounded-lg shadow-lg ring-1 ring-black/10 min-w-[300px] max-w-md animate-[slideIn_0.3s_ease-out,fadeIn_0.3s_ease-out]"
-  role="alert"
-  aria-live="polite"
-  style="animation: slideIn 0.3s ease-out, fadeIn 0.3s ease-out;"
->
+  <div
+    class="flex items-center gap-3 {bgColor} text-white px-4 py-3 rounded-lg shadow-lg ring-1 ring-black/10 min-w-[300px] max-w-md animate-[slideIn_0.3s_ease-out,fadeIn_0.3s_ease-out]"
+    role="alert"
+    aria-live="polite"
+  >
   <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={iconPath} />
   </svg>

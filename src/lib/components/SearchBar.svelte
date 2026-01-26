@@ -1,13 +1,11 @@
 <script lang="ts">
   let { initialQuery = '' }: { initialQuery?: string } = $props();
 
-  let q = $state(initialQuery);
+  let q = $state('');
   
   // initialQuery가 변경되면 q도 업데이트
   $effect(() => {
-    if (initialQuery !== undefined) {
-      q = initialQuery;
-    }
+    q = initialQuery ?? '';
   });
 </script>
 
@@ -39,4 +37,3 @@
     </div>
   </div>
 </form>
-

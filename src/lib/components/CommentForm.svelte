@@ -4,16 +4,28 @@
   import { showToast } from '$lib/stores/toast';
   import type { Comment } from '$lib/server/supabase/types';
   
+  type FormState = {
+    error?: string;
+    values?: {
+      content?: string;
+    };
+  };
+
   let { 
-    form = {},
+    form,
     oncreated
   }: {
-    form?: any;
+    form?: FormState;
     oncreated?: (comment: Comment) => void;
   } = $props();
   
-  let content = $state(form?.values?.content || '');
-  let error = $state(form?.error || '');
+  let content = $state('');
+  let error = $state('');
+
+  $effect(() => {
+    if (form?.values?.content !== undefined) content = form.values.content;
+    if (form?.error !== undefined) error = form.error;
+  });
   
   // 익명 사용자도 댓글 작성 가능
 

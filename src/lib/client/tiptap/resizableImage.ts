@@ -1,8 +1,8 @@
 /**
- * TipTap Resizable Image Extension
+ * TipTap 리사이즈 이미지 확장
  * 
- * Image extension을 확장하여 width/height 속성을 추가하고
- * 리사이즈 핸들을 표시할 수 있도록 함
+ * Image 확장을 확장하여 width/height 속성을 추가하고
+ * 리사이즈 핸들을 표시하도록 구현
  */
 
 import Image from '@tiptap/extension-image';
@@ -135,11 +135,10 @@ export const ResizableImage = Image.extend({
             // view.dom은 에디터의 루트 DOM 요소
             const editorDom = view.dom;
             if (editorDom && editorDom.contains(target)) {
-              // 에디터 영역을 클릭한 경우, 약간의 지연 후 포커스
-              // 이렇게 하면 에디터의 기본 클릭 이벤트가 먼저 처리됨
-              setTimeout(() => {
+              // 에디터 영역 클릭은 다음 프레임에 포커스 처리
+              requestAnimationFrame(() => {
                 view.focus();
-              }, 10);
+              });
             }
           }
         }
@@ -179,7 +178,7 @@ export const ResizableImage = Image.extend({
             if (!resizeState) return;
 
             const maintainAspectRatio = alwaysMaintainAspectRatio || e.shiftKey;
-            const { width, height } = calculateNewSize(
+            let { width, height } = calculateNewSize(
               handle.position,
               resizeState.startX,
               resizeState.startY,
@@ -190,6 +189,16 @@ export const ResizableImage = Image.extend({
               resizeState.aspectRatio,
               maintainAspectRatio
             );
+
+            const editorEl = view.dom as HTMLElement;
+            const computed = window.getComputedStyle(editorEl);
+            const paddingLeft = parseFloat(computed.paddingLeft) || 0;
+            const paddingRight = parseFloat(computed.paddingRight) || 0;
+            const maxWidth = Math.max(0, editorEl.clientWidth - paddingLeft - paddingRight);
+            if (maxWidth > 0 && width > maxWidth) {
+              width = maxWidth;
+              height = Math.round(maxWidth / resizeState.aspectRatio);
+            }
 
             // 이미지 크기 업데이트 (실시간 미리보기)
             img.style.width = `${width}px`;

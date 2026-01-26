@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import type { Session, User } from '@supabase/supabase-js';
 import { createSupabaseClient, createSupabaseClientWithSession } from '$lib/server/supabase/client';
 import { setSessionCookies, getUser, getSession } from '$lib/server/supabase/auth';
 import { convertAnonymousPostsToUserPosts } from '$lib/server/supabase/queries/posts';
@@ -46,7 +47,8 @@ export const actions = {
       ? createSupabaseClientWithSession(sessionTokens)
       : createSupabaseClient();
 
-    let data, error;
+    let signedUser: User | null = null;
+    let session: Session | null = null;
 
     if (isAnonymousUser && anonymousUserId && sessionTokens) {
       // 익명 사용자인 경우: updateUser로 이메일/비밀번호 추가 (user_id 유지)
@@ -77,14 +79,14 @@ export const actions = {
           });
         }
 
-        data = signUpData;
-        error = null;
+        signedUser = signUpData.user ?? null;
+        session = signUpData.session ?? null;
 
         // 새로운 사용자가 생성되었으므로 익명 글을 새 사용자 ID로 전환
-        if (data.session && data.user?.id) {
+        if (session && signedUser?.id) {
           setSessionCookies(cookies, {
-            accessToken: data.session.access_token,
-            refreshToken: data.session.refresh_token
+            accessToken: session.access_token,
+            refreshToken: session.refresh_token
           });
 
           try {
@@ -102,7 +104,7 @@ export const actions = {
                 // 세션이 유효함, 익명 글 전환 시도
                 convertedCount = await convertAnonymousPostsToUserPosts(
                   anonymousUserId,
-                  data.user.id,
+                  signedUser.id,
                   newSessionTokens
                 );
               }
@@ -122,14 +124,14 @@ export const actions = {
         }
       } else {
         // updateUser 성공: user_id 유지, 익명 글을 회원 글로 전환
-        data = updateData;
-        error = null;
+        signedUser = updateData.user ?? null;
+        session = (updateData as { session?: Session | null }).session ?? null;
 
         // 세션 갱신
-        if (data.session) {
+        if (session) {
           setSessionCookies(cookies, {
-            accessToken: data.session.access_token,
-            refreshToken: data.session.refresh_token
+            accessToken: session.access_token,
+            refreshToken: session.refresh_token
           });
 
           // 익명 글을 회원 글로 전환 (user_id는 동일하므로 is_anonymous만 변경)
@@ -186,22 +188,15 @@ export const actions = {
         });
       }
 
-      data = signUpData;
-      error = null;
-    }
-
-    if (error) {
-      return fail(400, {
-        error: error.message || '회원가입에 실패했습니다.',
-        values: { email, nickname }
-      });
+      signedUser = signUpData.user ?? null;
+      session = signUpData.session ?? null;
     }
 
     // 회원가입 완료 후 로그인 페이지로 리다이렉트 (성공 메시지 표시)
     let successMessage = '회원가입이 완료되었습니다.';
     
     // 프로젝트 설정에 따라 session이 없을 수 있음(이메일 확인 필요 시)
-    if (!data?.session) {
+    if (!session) {
       successMessage += ' 이메일 인증을 완료한 뒤 로그인해주세요.';
     }
     
@@ -220,12 +215,12 @@ export const actions = {
     }
     
     // 세션이 있으면 세션 쿠키 설정
-    if (data?.session) {
+    if (session) {
       if (!isAnonymousUser || !sessionTokens) {
         // 일반 회원가입인 경우에만 세션 쿠키 설정 (익명 업그레이드는 이미 설정됨)
         setSessionCookies(cookies, {
-          accessToken: data.session.access_token,
-          refreshToken: data.session.refresh_token
+          accessToken: session.access_token,
+          refreshToken: session.refresh_token
         });
       }
     }
@@ -233,4 +228,3 @@ export const actions = {
     throw redirect(303, `/login?success=${encodeURIComponent(successMessage)}`);
   }
 };
-

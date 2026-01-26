@@ -9,16 +9,21 @@ function plainTextFromHtml(html: string) {
 
 export const actions = {
   create: async ({ request, cookies }) => {
+    let title = '';
+    let content = '';
+    let author = '';
+    let editPassword = '';
+    let editPasswordConfirm = '';
     try {
       const formData = await request.formData();
-      const title = formData.get('title')?.toString();
-      const content = formData.get('content')?.toString();
-      const author = formData.get('author')?.toString();
-      const editPassword = formData.get('editPassword')?.toString();
-      const editPasswordConfirm = formData.get('editPasswordConfirm')?.toString();
+      title = formData.get('title')?.toString() ?? '';
+      content = formData.get('content')?.toString() ?? '';
+      author = formData.get('author')?.toString() ?? '';
+      editPassword = formData.get('editPassword')?.toString() ?? '';
+      editPasswordConfirm = formData.get('editPasswordConfirm')?.toString() ?? '';
 
       // 필드별 유효성 검사
-      const fieldErrors = {};
+      const fieldErrors: Record<string, string> = {};
       let hasErrors = false;
 
       if (!title || title.trim().length === 0) {
@@ -101,7 +106,7 @@ export const actions = {
       const post = await createPost(
         {
           title,
-          content: content || '', // 일단 원본 HTML 사용 (이미지 업로드 후 업데이트)
+          content, // 일단 원본 HTML 사용 (이미지 업로드 후 업데이트)
           // 로그인 사용자는 닉네임을 작성자명으로 강제
           author_name: isLoggedIn ? (user?.nickname || user?.email || undefined) : (author || undefined),
           edit_password: isLoggedIn ? undefined : editPassword,
@@ -111,7 +116,7 @@ export const actions = {
       );
 
       // Blob URL을 Storage URL로 변환 (postId 사용)
-      let finalContent = content || '';
+      let finalContent = content;
       if (images.length > 0 && blobUrls.length > 0) {
         if (!sessionTokens) {
           // console.error('서버: sessionTokens가 없어서 이미지 업로드를 건너뜁니다.');

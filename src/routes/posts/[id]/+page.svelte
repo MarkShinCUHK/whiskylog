@@ -1,25 +1,32 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
+  import { tick } from 'svelte';
   import LikeButton from '$lib/components/LikeButton.svelte';
   import CommentList from '$lib/components/CommentList.svelte';
   import CommentForm from '$lib/components/CommentForm.svelte';
   import { showToast } from '$lib/stores/toast';
+  import type { Comment } from '$lib/server/supabase/types';
   
   let { data } = $props();
 
   // 댓글 기능 활성화 여부
   const ENABLE_COMMENTS = false;
 
-  let comments = $state(data.comments || []);
+  let comments = $state<Comment[]>([]);
   $effect(() => {
     if (data.comments) comments = data.comments;
   });
 
   // HTML의 width/height 속성을 CSS로 강제 적용
   $effect(() => {
-    if (typeof window !== 'undefined' && data.postHtml) {
-      setTimeout(() => {
+    let cancelled = false;
+
+    (async () => {
+      if (typeof window === 'undefined' || !data.postHtml) return;
+      await tick();
+      requestAnimationFrame(() => {
+        if (cancelled) return;
         const postContent = document.querySelector('.post-content');
         if (postContent) {
           // 모든 이미지 처리 (editor-image 클래스 유무와 관계없이)
@@ -65,16 +72,18 @@
             }
           });
         }
-      }, 200);
-    }
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   });
 
-  function handleDeleteSubmit(e: Event) {
+  function confirmDelete(cancel: () => void) {
     if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
-      e.preventDefault();
-      return;
+      cancel();
     }
-    // confirm이 true이면 폼 제출 진행 (use:enhance가 처리)
   }
 </script>
 
@@ -108,7 +117,16 @@
     <!-- 본문 -->
     <div class="mb-12">
       <div class="rounded-2xl bg-white/80 backdrop-blur-sm p-8 sm:p-10 ring-1 ring-black/5 shadow-sm">
-        <div class="post-content rich-content prose prose-lg prose-img:max-w-none max-w-none prose-headings:text-whiskey-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900">
+        <div class="post-content prose prose-lg max-w-none
+          prose-headings:text-whiskey-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900
+          prose-ul:list-disc prose-ul:pl-6 prose-ol:list-decimal prose-ol:pl-6 prose-li:my-1
+          prose-h1:text-[2.25rem] prose-h1:leading-tight prose-h1:mt-8 prose-h1:mb-4
+          prose-h2:text-[1.875rem] prose-h2:leading-snug prose-h2:mt-6 prose-h2:mb-3
+          prose-h3:text-[1.5rem] prose-h3:leading-snug prose-h3:mt-4 prose-h3:mb-2
+          prose-h4:text-[1.25rem] prose-h4:mt-3 prose-h4:mb-2
+          prose-h5:text-[1.125rem] prose-h5:mt-2 prose-h5:mb-2
+          prose-h6:text-[1rem] prose-h6:mt-2 prose-h6:mb-2
+          prose-img:inline-block prose-img:my-2 prose-img:max-w-full">
           {@html data.postHtml}
         </div>
       </div>
@@ -119,11 +137,15 @@
       <section class="mb-12">
         <h2 class="text-2xl sm:text-3xl font-bold text-whiskey-900 mb-6 tracking-tight">댓글</h2>
         <div class="mb-6">
-          <CommentForm
-            oncreated={(comment) => {
-              if (comment) comments = [...comments, comment];
-            }}
-          />
+          {#if $page.data?.user}
+            <CommentForm
+              oncreated={(comment) => {
+                if (comment) comments = [...comments, comment];
+              }}
+            />
+          {:else}
+            <p class="text-sm text-gray-600">댓글 작성은 로그인 후 가능합니다.</p>
+          {/if}
         </div>
         <div>
           <CommentList
@@ -154,8 +176,8 @@
         <form
           method="POST"
           action="?/delete"
-          onsubmit={(e) => { e.preventDefault(); handleDeleteSubmit(e); }}
-          use:enhance={() => {
+          use:enhance={({ cancel }) => {
+            confirmDelete(cancel);
             return async ({ result, update }) => {
               try {
                 // 기본 업데이트 먼저 수행 (redirect 포함)

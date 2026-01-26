@@ -203,8 +203,6 @@
       onTransaction: ({ editor }) => {
         // 공식 문서 패턴: editorState 재할당으로 리렌더링 강제
         editorState = { editor };
-      },
-      onUpdate({ editor }) {
         // 외부 value sync 루프 방지를 위해 최신 HTML을 기록
         const html = editor.getHTML();
         lastExternalValue = html;

@@ -107,7 +107,7 @@ export function sanitizePostHtml(html: string): string {
       }
     },
     transformTags: {
-      a: (tagName, attribs) => {
+      a: (tagName: string, attribs: Record<string, string>) => {
         // rel/target 강제 (새 탭 열기 기본)
         const next = { ...attribs };
         if (!next.target) next.target = '_blank';
