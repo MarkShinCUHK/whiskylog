@@ -68,3 +68,13 @@ export type LikeRow = {
   user_id: string; // UUID
   created_at: string; // ISO 8601 timestamptz
 };
+
+/**
+ * Supabase bookmarks 테이블의 row 타입
+ */
+export type BookmarkRow = {
+  id: string; // UUID
+  post_id: string; // UUID
+  user_id: string; // UUID
+  created_at: string; // ISO 8601 timestamptz
+};

@@ -88,12 +88,23 @@ CREATE TABLE IF NOT EXISTS likes (
   UNIQUE(post_id, user_id) -- 중복 좋아요 방지
 );
 
+-- bookmarks 테이블 생성 (북마크)
+CREATE TABLE IF NOT EXISTS bookmarks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL, -- auth.users 참조 (FK는 선택사항)
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(post_id, user_id) -- 중복 북마크 방지
+);
+
 -- 인덱스 생성
 CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id);
 CREATE INDEX IF NOT EXISTS idx_likes_post_id ON likes(post_id);
 CREATE INDEX IF NOT EXISTS idx_likes_user_id ON likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_post_id ON bookmarks(post_id);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id);
 
 -- RLS (Row Level Security) 설정
 -- 
@@ -113,6 +124,7 @@ CREATE INDEX IF NOT EXISTS idx_likes_user_id ON likes(user_id);
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
 
 -- 2. posts 테이블 정책
 -- 읽기: 모든 사용자 (익명 포함) 읽기 가능
@@ -190,6 +202,22 @@ WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = user_id);
 -- 삭제: 작성자 본인만
 CREATE POLICY "Users can delete own likes"
 ON likes FOR DELETE
+USING (auth.uid() = user_id);
+
+-- 5. bookmarks 테이블 정책
+-- 읽기: 본인 북마크만
+CREATE POLICY "Users can read own bookmarks"
+ON bookmarks FOR SELECT
+USING (auth.uid() = user_id);
+
+-- 작성: 로그인 사용자만
+CREATE POLICY "Authenticated users can insert bookmarks"
+ON bookmarks FOR INSERT
+WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = user_id);
+
+-- 삭제: 작성자 본인만
+CREATE POLICY "Users can delete own bookmarks"
+ON bookmarks FOR DELETE
 USING (auth.uid() = user_id);
 
 -- Storage 버킷 생성 (게시글 이미지용)

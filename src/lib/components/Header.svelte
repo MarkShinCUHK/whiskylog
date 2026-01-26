@@ -29,6 +29,7 @@
         </a>
         {#if $page.data?.user}
           <a href="/my-posts" class="text-gray-700 hover:text-gray-900 transition-colors font-medium">내 글</a>
+          <a href="/bookmarks" class="text-gray-700 hover:text-gray-900 transition-colors font-medium">북마크</a>
           <a href="/logout" class="px-4 py-2 rounded-xl bg-gray-900/5 hover:bg-gray-900/10 ring-1 ring-black/10 transition-colors font-medium">
             로그아웃
           </a>
@@ -84,6 +85,13 @@
             onclick={() => (mobileMenuOpen = false)}
           >
             내 글
+          </a>
+          <a
+            href="/bookmarks"
+            class="block py-3 min-h-[44px] px-4 rounded-xl hover:bg-gray-900/5 transition-colors font-medium ring-1 ring-black/10"
+            onclick={() => (mobileMenuOpen = false)}
+          >
+            북마크
           </a>
           <a
             href="/logout"

@@ -4,6 +4,7 @@ import { getUser, getSession, getUserOrCreateAnonymous } from '$lib/server/supab
 import { listComments } from '$lib/server/supabase/queries/comments';
 import { getLikeCount, isLiked } from '$lib/server/supabase/queries/likes';
 import { sanitizePostHtml } from '$lib/server/supabase/queries/posts';
+import { isBookmarked } from '$lib/server/supabase/queries/bookmarks';
 
 export async function load({ params, cookies }) {
   try {
@@ -42,10 +43,11 @@ export async function load({ params, cookies }) {
     
     // 댓글 기능이 비활성화되어 있으면 빈 배열 반환 (에러 방지)
     const ENABLE_COMMENTS = false;
-    const [comments, likeCount, userLiked] = await Promise.all([
+    const [comments, likeCount, userLiked, bookmarked] = await Promise.all([
       ENABLE_COMMENTS ? listComments(postId, sessionTokens || undefined) : Promise.resolve([]),
       getLikeCount(postId, sessionTokens || undefined).catch(() => 0), // 에러 발생 시 0 반환
-      canSocial ? isLiked(postId, user.id, sessionTokens || undefined).catch(() => false) : Promise.resolve(false)
+      canSocial ? isLiked(postId, user.id, sessionTokens || undefined).catch(() => false) : Promise.resolve(false),
+      canSocial ? isBookmarked(postId, user.id, sessionTokens || undefined).catch(() => false) : Promise.resolve(false)
     ]);
 
     // 정책:
@@ -70,6 +72,7 @@ export async function load({ params, cookies }) {
       comments,
       likeCount,
       isLiked: userLiked,
+      isBookmarked: bookmarked,
       canEditDelete,
       needsEditPassword
     };
@@ -205,6 +208,41 @@ export const actions = {
       console.error('좋아요 토글 오류:', err);
       return fail(500, {
         error: '좋아요 처리 중 오류가 발생했습니다.'
+      });
+    }
+  },
+  toggleBookmark: async ({ request, params, cookies }) => {
+    try {
+      const postId = params.id;
+
+      if (!postId) {
+        return fail(400, {
+          error: '게시글 ID가 없습니다.'
+        });
+      }
+
+      const user = await getUser(cookies);
+      if (!user || user.isAnonymous) {
+        return fail(401, { error: '북마크를 사용하려면 로그인이 필요합니다.' });
+      }
+
+      const sessionTokens = getSession(cookies);
+      if (!sessionTokens) {
+        return fail(401, { error: '로그인 세션이 없습니다. 다시 로그인해주세요.' });
+      }
+
+      const { toggleBookmark, isBookmarked } = await import('$lib/server/supabase/queries/bookmarks');
+      await toggleBookmark(postId, user.id, sessionTokens);
+      const bookmarked = await isBookmarked(postId, user.id, sessionTokens);
+
+      return { isBookmarked: bookmarked };
+    } catch (err) {
+      if (err && typeof err === 'object' && 'status' in err) {
+        throw err;
+      }
+      console.error('북마크 토글 오류:', err);
+      return fail(500, {
+        error: '북마크 처리 중 오류가 발생했습니다.'
       });
     }
   },

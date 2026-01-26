@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { tick } from 'svelte';
   import LikeButton from '$lib/components/LikeButton.svelte';
+  import BookmarkButton from '$lib/components/BookmarkButton.svelte';
   import CommentList from '$lib/components/CommentList.svelte';
   import CommentForm from '$lib/components/CommentForm.svelte';
   import { showToast } from '$lib/stores/toast';
@@ -109,6 +110,10 @@
             postId={data.post.id}
             likeCount={data.likeCount || 0}
             isLiked={data.isLiked || false}
+          />
+          <BookmarkButton
+            postId={data.post.id}
+            isBookmarked={data.isBookmarked || false}
           />
         </div>
       </div>

@@ -135,7 +135,7 @@ export function sanitizePostHtml(html: string): string {
 /**
  * Supabase row를 Post 타입으로 변환
  */
-function mapRowToPost(row: PostRow): Post {
+export function mapRowToPost(row: PostRow): Post {
   const createdAt = new Date(row.created_at);
   const dateStr = createdAt.toISOString().split('T')[0]; // YYYY-MM-DD
 
