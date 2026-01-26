@@ -57,9 +57,62 @@
 
   // 이미지 파일 형식 검증 (JPG, PNG, WebP, GIF)
   const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+  const MAX_IMAGE_WIDTH = 1600;
+  const MAX_IMAGE_HEIGHT = 1600;
+  const IMAGE_QUALITY = 0.82;
   
   function isValidImageType(file: File): boolean {
     return ALLOWED_IMAGE_TYPES.includes(file.type.toLowerCase());
+  }
+
+  function getMimeType(fileType: string): string {
+    const lowerType = fileType.toLowerCase();
+    if (lowerType === 'image/png') return 'image/png';
+    if (lowerType === 'image/webp') return 'image/webp';
+    return 'image/jpeg';
+  }
+
+  async function compressImage(file: File): Promise<File> {
+    if (file.type.toLowerCase() === 'image/gif') {
+      return file;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      image.src = objectUrl;
+      await image.decode();
+
+      const scale = Math.min(
+        1,
+        MAX_IMAGE_WIDTH / image.width,
+        MAX_IMAGE_HEIGHT / image.height
+      );
+
+      const targetWidth = Math.max(1, Math.round(image.width * scale));
+      const targetHeight = Math.max(1, Math.round(image.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return file;
+      ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+      const mimeType = getMimeType(file.type);
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, mimeType, IMAGE_QUALITY);
+      });
+      if (!blob) return file;
+
+      const extension = mimeType.split('/')[1] || 'jpg';
+      const fileName = file.name ? file.name.replace(/\.[^/.]+$/, `.${extension}`) : `image.${extension}`;
+      return new File([blob], fileName, { type: mimeType });
+    } catch (error) {
+      return file;
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
   }
 
   let fileInputRef: HTMLInputElement | null = null;
@@ -69,7 +122,7 @@
     fileInputRef?.click();
   }
 
-  function handleFileChange(event: Event) {
+  async function handleFileChange(event: Event) {
     if (!editorState.editor) return;
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -83,8 +136,9 @@
       return;
     }
 
-    // Blob URL 생성하여 에디터에 삽입
-    const blobUrl = URL.createObjectURL(file);
+    // 이미지 압축/리사이즈 후 Blob URL 생성
+    const optimizedFile = await compressImage(file);
+    const blobUrl = URL.createObjectURL(optimizedFile);
     // 이미지 삽입 시 원본 크기를 width/height로 설정
     const img = new Image();
     img.onload = () => {
@@ -105,7 +159,7 @@
     img.src = blobUrl;
 
     // 부모 컴포넌트에 이미지 파일 정보 전달 (Blob URL과 File 객체 매핑)
-    onImageAdd?.(blobUrl, file);
+    onImageAdd?.(blobUrl, optimizedFile);
 
     // input 초기화 (같은 파일을 다시 선택할 수 있도록)
     input.value = '';
