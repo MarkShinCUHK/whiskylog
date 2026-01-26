@@ -1,6 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getPostById, updatePost } from '$lib/server/supabase/queries/posts';
+import { listWhiskies } from '$lib/server/supabase/queries/whiskies';
 import { getUser, getSession, getUserOrCreateAnonymous } from '$lib/server/supabase/auth';
 import { convertBlobUrlsToStorageUrls } from '$lib/server/supabase/queries/images.js';
 import { deleteImage } from '$lib/server/supabase/queries/storage.js';
@@ -50,8 +51,10 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
       }
     }
 
+    const whiskies = await listWhiskies(200);
     return {
-      post
+      post,
+      whiskies
     };
   } catch (err) {
     // SvelteKit error는 그대로 전달
@@ -94,6 +97,7 @@ export const actions: Actions = {
       const author = formData.get('author')?.toString();
       const editPassword = formData.get('editPassword')?.toString();
       const tags = formData.get('tags')?.toString() ?? '';
+      const whiskyId = formData.get('whiskyId')?.toString() ?? '';
       console.log('[EDIT] 폼 데이터:', { 
         title: title?.substring(0, 50), 
         contentLength: content?.length,
@@ -142,7 +146,8 @@ export const actions: Actions = {
             title: title || '',
             content: content || '',
             author: author || '',
-            tags: tags || ''
+            tags: tags || '',
+            whiskyId: whiskyId || ''
           }
         });
       }
@@ -254,7 +259,8 @@ export const actions: Actions = {
               title: title || '',
               content: content || '',
               author: author || '',
-              tags: tags || ''
+              tags: tags || '',
+              whiskyId: whiskyId || ''
             }
           });
         }
@@ -313,7 +319,8 @@ export const actions: Actions = {
         title,
         content: finalContent, // 변환된 HTML 사용
           author_name: isAnonymousPost ? (author || undefined) : (user?.nickname || user?.email || undefined),
-          tags: parseTags(tags)
+          tags: parseTags(tags),
+          whisky_id: whiskyId || null
         },
         {
           userId: isAnonymousPost ? null : (user?.id ?? null), // 익명 글은 항상 null

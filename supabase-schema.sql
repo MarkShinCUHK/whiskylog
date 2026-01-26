@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS posts (
   view_count INTEGER NOT NULL DEFAULT 0,
   -- 태그 (검색/필터)
   tags TEXT[] DEFAULT '{}'::TEXT[],
+  -- 위스키 연결
+  whisky_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -42,6 +44,14 @@ ALTER TABLE posts
   ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'::TEXT[];
 
 ALTER TABLE posts
+  ADD COLUMN IF NOT EXISTS whisky_id UUID;
+
+-- (선택) whisky_id FK는 위스키 테이블 생성 후 적용
+-- ALTER TABLE posts
+--   ADD CONSTRAINT posts_whisky_id_fkey
+--   FOREIGN KEY (whisky_id) REFERENCES whiskies(id) ON DELETE SET NULL;
+
+ALTER TABLE posts
   ALTER COLUMN author_name SET DEFAULT '익명의 위스키 러버';
 
 -- (선택) user_id FK는 Supabase Auth 사용 시에만 적용 권장
@@ -53,6 +63,22 @@ ALTER TABLE posts
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_author_name ON posts(author_name);
 CREATE INDEX IF NOT EXISTS idx_posts_tags ON posts USING GIN (tags);
+CREATE INDEX IF NOT EXISTS idx_posts_whisky_id ON posts(whisky_id);
+
+-- whiskies 테이블 생성 (위스키 DB)
+CREATE TABLE IF NOT EXISTS whiskies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  brand TEXT,
+  type TEXT,
+  region TEXT,
+  age INTEGER,
+  abv NUMERIC(4,1),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_whiskies_name ON whiskies(name);
+CREATE INDEX IF NOT EXISTS idx_whiskies_brand ON whiskies(brand);
 
 -- 조회수 증가 함수 (RLS 우회용, 서버에서 호출)
 CREATE OR REPLACE FUNCTION increment_post_view(p_post_id UUID)

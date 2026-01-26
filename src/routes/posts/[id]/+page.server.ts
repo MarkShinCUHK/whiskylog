@@ -5,6 +5,7 @@ import { listComments } from '$lib/server/supabase/queries/comments';
 import { getLikeCount, isLiked } from '$lib/server/supabase/queries/likes';
 import { sanitizePostHtml } from '$lib/server/supabase/queries/posts';
 import { isBookmarked } from '$lib/server/supabase/queries/bookmarks';
+import { getWhiskyById } from '$lib/server/supabase/queries/whiskies';
 
 export async function load({ params, cookies }) {
   try {
@@ -43,11 +44,12 @@ export async function load({ params, cookies }) {
     
     // 댓글 기능이 비활성화되어 있으면 빈 배열 반환 (에러 방지)
     const ENABLE_COMMENTS = false;
-    const [comments, likeCount, userLiked, bookmarked] = await Promise.all([
+    const [comments, likeCount, userLiked, bookmarked, whisky] = await Promise.all([
       ENABLE_COMMENTS ? listComments(postId, sessionTokens || undefined) : Promise.resolve([]),
       getLikeCount(postId, sessionTokens || undefined).catch(() => 0), // 에러 발생 시 0 반환
       canSocial ? isLiked(postId, user.id, sessionTokens || undefined).catch(() => false) : Promise.resolve(false),
-      canSocial ? isBookmarked(postId, user.id, sessionTokens || undefined).catch(() => false) : Promise.resolve(false)
+      canSocial ? isBookmarked(postId, user.id, sessionTokens || undefined).catch(() => false) : Promise.resolve(false),
+      post.whiskyId ? getWhiskyById(post.whiskyId).catch(() => null) : Promise.resolve(null)
     ]);
 
     // 정책:
@@ -69,6 +71,7 @@ export async function load({ params, cookies }) {
         views: viewCount
       },
       postHtml: sanitizePostHtml(post.content),
+      whisky,
       comments,
       likeCount,
       isLiked: userLiked,

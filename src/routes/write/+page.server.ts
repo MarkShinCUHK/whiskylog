@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { createPost } from '$lib/server/supabase/queries/posts';
+import { listWhiskies } from '$lib/server/supabase/queries/whiskies';
 import { getUser, getUserOrCreateAnonymous, getSession } from '$lib/server/supabase/auth';
 import { convertBlobUrlsToStorageUrls } from '$lib/server/supabase/queries/images.js';
 
@@ -22,12 +23,14 @@ export const actions = {
     let editPassword = '';
     let editPasswordConfirm = '';
     let tags = '';
+    let whiskyId = '';
     try {
       const formData = await request.formData();
       title = formData.get('title')?.toString() ?? '';
       content = formData.get('content')?.toString() ?? '';
       author = formData.get('author')?.toString() ?? '';
       tags = formData.get('tags')?.toString() ?? '';
+      whiskyId = formData.get('whiskyId')?.toString() ?? '';
       editPassword = formData.get('editPassword')?.toString() ?? '';
       editPasswordConfirm = formData.get('editPasswordConfirm')?.toString() ?? '';
 
@@ -72,7 +75,8 @@ export const actions = {
             title: title || '',
             content: content || '',
             author: author || '',
-            tags: tags || ''
+            tags: tags || '',
+            whiskyId: whiskyId || ''
           }
         });
       }
@@ -121,6 +125,7 @@ export const actions = {
           author_name: isLoggedIn ? (user?.nickname || user?.email || undefined) : (author || undefined),
           edit_password: isLoggedIn ? undefined : editPassword,
           user_id: user.id, // 익명 사용자도 익명 세션의 user_id를 저장
+          whisky_id: whiskyId || null,
           tags: parseTags(tags)
         },
         accessToken
@@ -184,7 +189,8 @@ export const actions = {
                 title: title || '',
                 content: content || '',
                 author: author || '',
-                tags: tags || ''
+                tags: tags || '',
+                whiskyId: whiskyId || ''
               }
             });
           }
@@ -212,9 +218,15 @@ export const actions = {
           title: title || '',
           content: content || '',
           author: author || '',
-          tags: tags || ''
+          tags: tags || '',
+          whiskyId: whiskyId || ''
         }
       });
     }
   }
 };
+
+export async function load() {
+  const whiskies = await listWhiskies(200);
+  return { whiskies };
+}

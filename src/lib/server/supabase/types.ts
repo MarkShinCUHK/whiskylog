@@ -9,6 +9,7 @@ export type PostRow = {
   edit_password_hash?: string | null;
   user_id?: string | null;
   is_anonymous?: boolean | null;
+  whisky_id?: string | null;
   created_at: string; // ISO 8601 timestamptz
   view_count?: number | null;
   // 선택적 필드들 (스키마에 없어도 안전하게 처리)
@@ -29,6 +30,7 @@ export type Post = {
   createdAt: string; // YYYY-MM-DD
   userId?: string | null; // 로그인 글 소유자 (익명 글이면 null)
   isAnonymous?: boolean; // 익명 글 여부
+  whiskyId?: string | null;
   tags?: string[]; // 태그 목록
   views?: number;
   likes?: number;
@@ -97,4 +99,26 @@ export type Profile = {
   bio: string | null;
   avatarUrl: string | null;
   updatedAt: string;
+};
+
+export type WhiskyRow = {
+  id: string; // UUID
+  name: string;
+  brand?: string | null;
+  type?: string | null;
+  region?: string | null;
+  age?: number | null;
+  abv?: number | null;
+  created_at: string; // ISO 8601 timestamptz
+};
+
+export type Whisky = {
+  id: string;
+  name: string;
+  brand: string | null;
+  type: string | null;
+  region: string | null;
+  age: number | null;
+  abv: number | null;
+  createdAt: string;
 };

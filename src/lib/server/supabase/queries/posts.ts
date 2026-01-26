@@ -157,6 +157,7 @@ export function mapRowToPost(row: PostRow): Post {
     createdAt: dateStr,
     userId: row.user_id ?? null,
     isAnonymous: row.is_anonymous ?? false,
+    whiskyId: row.whisky_id ?? null,
     tags: row.tags ?? [],
     // 선택적 필드들 안전하게 처리
     likes: row.like_count ?? undefined,
@@ -404,6 +405,7 @@ export async function createPost(
     author_name?: string;
     edit_password?: string;
     user_id?: string | null;
+    whisky_id?: string | null;
     tags?: string[];
   },
   accessToken?: string
@@ -438,6 +440,7 @@ export async function createPost(
         edit_password_hash: editPasswordHash,
         user_id: input.user_id ?? null,
         is_anonymous: isAnonymous,
+        whisky_id: input.whisky_id ?? null,
         tags: normalizeTags(input.tags)
       })
       .select()
@@ -526,6 +529,7 @@ export async function updatePost(
     title?: string;
     content?: string;
     author_name?: string;
+    whisky_id?: string | null;
     tags?: string[];
   },
   auth: { editPassword?: string; userId?: string | null },
@@ -589,6 +593,7 @@ export async function updatePost(
     if (input.title !== undefined) updateData.title = input.title;
     if (input.content !== undefined) updateData.content = sanitizePostHtml(input.content);
     if (input.author_name !== undefined) updateData.author_name = normalizeAuthorName(input.author_name);
+    if (input.whisky_id !== undefined) updateData.whisky_id = input.whisky_id;
     if (input.tags !== undefined) updateData.tags = normalizeTags(input.tags);
 
     const { data, error } = await supabase

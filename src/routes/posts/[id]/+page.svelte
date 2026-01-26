@@ -103,6 +103,23 @@
             <span class="font-semibold text-gray-900">{data.post.author}</span>
             <span class="text-gray-500">{data.post.createdAt}</span>
           </div>
+          {#if data.whisky}
+            <div class="flex flex-wrap gap-2">
+              <span class="inline-flex items-center rounded-full bg-whiskey-100 px-3 py-1 text-xs font-semibold text-whiskey-800 ring-1 ring-whiskey-200">
+                {data.whisky.brand ? `${data.whisky.brand} · ${data.whisky.name}` : data.whisky.name}
+              </span>
+              {#if data.whisky.region}
+                <span class="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-600 ring-1 ring-black/10">
+                  {data.whisky.region}
+                </span>
+              {/if}
+              {#if data.whisky.age}
+                <span class="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-600 ring-1 ring-black/10">
+                  {data.whisky.age}년
+                </span>
+              {/if}
+            </div>
+          {/if}
           {#if data.post.tags && data.post.tags.length > 0}
             <div class="flex flex-wrap gap-2">
               {#each data.post.tags as tag}

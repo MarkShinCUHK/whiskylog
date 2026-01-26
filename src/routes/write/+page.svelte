@@ -11,16 +11,18 @@
       content?: string;
       author?: string;
       tags?: string;
+      whiskyId?: string;
     };
   };
 
-  let { form }: { form?: FormState } = $props();
+  let { form, data }: { form?: FormState; data?: { whiskies?: Array<{ id: string; name: string; brand?: string | null }> } } = $props();
   
   let title = $state('');
   let content = $state('');
   let contentText = $state('');
   let author = $state('');
   let tags = $state('');
+  let whiskyId = $state('');
   let error = $state('');
   let fieldErrors = $state<Record<string, string>>({});
   let editPassword = $state('');
@@ -39,6 +41,7 @@
     if (form?.values?.content !== undefined) content = form.values.content;
     if (form?.values?.author !== undefined) author = form.values.author;
     if (form?.values?.tags !== undefined) tags = form.values.tags;
+    if (form?.values?.whiskyId !== undefined) whiskyId = form.values.whiskyId;
     if (form?.error !== undefined) error = form.error;
     if (form?.fieldErrors !== undefined) fieldErrors = form.fieldErrors || {};
     if (form?.values?.content !== undefined) {
@@ -152,6 +155,9 @@
     }
     if (tags) {
       formData.append('tags', tags);
+    }
+    if (whiskyId) {
+      formData.append('whiskyId', whiskyId);
     }
 
     if (!isLoggedIn) {
@@ -302,6 +308,26 @@
         class="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
       />
       <p class="mt-2 text-sm text-gray-500">태그는 쉼표로 구분되며 최대 10개까지 저장됩니다.</p>
+    </div>
+
+    <!-- 위스키 -->
+    <div class="mb-6">
+      <label for="whiskyId" class="block text-sm font-medium text-gray-700 mb-2">
+        위스키 선택
+      </label>
+      <select
+        id="whiskyId"
+        name="whiskyId"
+        bind:value={whiskyId}
+        class="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
+      >
+        <option value="">선택 안 함</option>
+        {#each data?.whiskies || [] as whisky}
+          <option value={whisky.id}>
+            {whisky.brand ? `${whisky.brand} - ${whisky.name}` : whisky.name}
+          </option>
+        {/each}
+      </select>
     </div>
 
     <!-- 내용 -->
