@@ -1,14 +1,9 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
   import { page } from '$app/stores';
   import { showToast } from '$lib/stores/toast';
   import RichTextEditor from '$lib/components/RichTextEditor.svelte';
   
-  // Svelte 5: $props()를 구조분해하면 초기값만 캡처되어 form 업데이트가 반영되지 않을 수 있음
-  // (비밀번호 불일치 등 서버 fail 결과를 UI에 표시하기 위해 derived로 연결)
-  let props = $props();
-  let data = $derived(props.data);
-  let form = $derived(props.form);
+  let { data, form } = $props();
   
   let title = $state('');
   let content = $state('');
@@ -18,37 +13,40 @@
   let fieldErrors = $state<Record<string, string>>({});
   let editPassword = $state('');
 
-  // 클라이언트 사이드 실시간 유효성 검사
+  // 클라이언트 사이드 실시간 유효성 검사 (blur 이벤트 후에만 표시)
   let clientFieldErrors = $state<Record<string, string>>({});
   let touchedFields = $state<Record<string, boolean>>({}); // blur된 필드만 추적
 
   // 이미지 파일 추적 (Blob URL -> File 객체 매핑)
   let imageFiles = $state<Map<string, File>>(new Map());
 
-  // 초기값 설정: data.post가 로드되면 즉시 설정 (RichTextEditor 초기화 전에)
-  let initialized = $state(false);
+  // 초기값 설정: data.post가 로드되면 즉시 설정
   $effect(() => {
-    if (!initialized && data.post) {
+    if (data?.post) {
       if (data.post.title !== undefined) title = data.post.title;
       if (data.post.content !== undefined) {
         content = data.post.content;
-        contentText = plainTextFromHtml(content);
+        contentText = plainTextFromHtml(data.post.content);
       }
       if (data.post.author !== undefined) author = data.post.author;
-      initialized = true;
     }
   });
 
-  // form 업데이트 시 동기화 (서버 에러 후 복원용)
+  // form이 업데이트되면 상태 동기화
   $effect(() => {
     if (form?.values?.title !== undefined) title = form.values.title;
-    if (form?.values?.content !== undefined) {
-      content = form.values.content;
-      contentText = plainTextFromHtml(content);
-    }
+    if (form?.values?.content !== undefined) content = form.values.content;
     if (form?.values?.author !== undefined) author = form.values.author;
     if (form?.error !== undefined) error = form.error;
     if (form?.fieldErrors !== undefined) fieldErrors = form.fieldErrors || {};
+    if (form?.values?.content !== undefined) {
+      contentText = plainTextFromHtml(form.values.content || '');
+    }
+    
+    // 서버에서 에러가 없으면 클라이언트 에러도 초기화
+    if (!form?.fieldErrors || Object.keys(form.fieldErrors).length === 0) {
+      clientFieldErrors = {};
+    }
   });
 
   function plainTextFromHtml(html: string) {
@@ -78,8 +76,10 @@
   }
 
   function validatePassword() {
-    if (data.post?.isAnonymous) {
+    if (data?.post?.isAnonymous && !isLoggedIn) {
+      // 입력 중이거나 blur된 경우에만 검사
       if (touchedFields.editPassword || editPassword.length > 0) {
+        // 빈 값이면 에러 표시 안 함
         if (editPassword.length === 0) {
           clientFieldErrors = { ...clientFieldErrors };
           delete clientFieldErrors.editPassword;
@@ -94,19 +94,98 @@
   // 실시간 검사는 oninput/onblur 핸들러에서 직접 처리
   // $effect는 무한 루프를 방지하기 위해 제거
 
-  // 서버 에러와 클라이언트 에러 병합
-  let allFieldErrors = $derived({ ...fieldErrors, ...clientFieldErrors });
+  // 서버 에러와 클라이언트 에러 병합 (서버 에러가 우선)
+  let allFieldErrors = $derived({ ...clientFieldErrors, ...fieldErrors });
 
   let isLoggedIn = $derived(!!$page.data?.user);
   $effect(() => {
-    if (isLoggedIn && $page.data.user) {
+    if (isLoggedIn) {
+      // 로그인 사용자는 닉네임을 작성자명으로 고정 (서버에서도 강제함)
       author = $page.data.user.nickname || $page.data.user.email || author;
     }
   });
+
+  // ⭐ 핵심: use:enhance 대신 수동 submit 핸들링
+  async function handleSubmit(e: SubmitEvent) {
+    e.preventDefault();
+
+    const formData = new FormData();
+
+    // 텍스트 필드
+    formData.append('title', title);
+    formData.append('content', content);
+    if (author) {
+      formData.append('author', author);
+    }
+
+    if (data?.post?.isAnonymous && !isLoggedIn) {
+      if (editPassword) {
+        formData.append('editPassword', editPassword);
+      }
+    }
+
+    // 이미지 파일 추가
+    const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+    const matches = Array.from(content.matchAll(imgRegex));
+    const blobUrls = matches
+      .map((m: RegExpMatchArray) => m[1])
+      .filter((src: string) => src.startsWith('blob:'));
+
+    blobUrls.forEach((blobUrl, index) => {
+      const file = imageFiles.get(blobUrl);
+      if (file instanceof File) {
+        formData.append(`image_${index}`, file, file.name);
+        formData.append(`image_url_${index}`, blobUrl);
+      }
+    });
+
+    try {
+      const res = await fetch('?/update', {
+        method: 'POST',
+        body: formData
+      });
+
+      // 응답 상태 확인
+      if (!res.ok) {
+        // console.error('서버 응답 오류:', res.status, res.statusText);
+        const errorData = await res.json().catch(() => ({}));
+        showToast(errorData.error ?? `서버 오류 (${res.status})`, 'error');
+        return;
+      }
+
+      const result = await res.json();
+      // console.log('클라이언트: 서버 응답:', result);
+
+      // SvelteKit action 응답 타입: 'success' | 'failure' | 'redirect'
+      if (result.type === 'success' || result.type === 'redirect') {
+        showToast('게시글이 수정되었습니다.', 'success');
+        imageFiles.clear();
+        // redirect인 경우 location으로 이동
+        if (result.location) {
+          window.location.href = result.location;
+        } else if (result.type === 'redirect') {
+          // redirect 타입이지만 location이 없는 경우
+          // console.warn('Redirect 응답이지만 location이 없습니다:', result);
+        }
+      } else if (result.type === 'failure') {
+        // 실패 응답 처리
+        const errorMsg = result.data?.error ?? '게시글 수정에 실패했습니다.';
+        showToast(errorMsg, 'error');
+        // console.error('게시글 수정 실패:', result.data);
+      } else {
+        // 알 수 없는 응답 타입
+        // console.error('알 수 없는 응답 타입:', result);
+        showToast('예상치 못한 응답을 받았습니다.', 'error');
+      }
+    } catch (error) {
+      // console.error('폼 제출 오류:', error);
+      showToast('게시글 수정 중 오류가 발생했습니다.', 'error');
+    }
+  }
 </script>
 
 <svelte:head>
-  <title>글 수정 - {data.post?.title || 'whiskylog'}</title>
+  <title>글 수정 - {data?.post?.title || 'whiskylog'}</title>
 </svelte:head>
 
 <div class="max-w-4xl xl:max-w-5xl mx-auto px-4 xl:px-8 py-12">
@@ -114,45 +193,7 @@
 
   <form
     method="POST"
-    use:enhance={({ formData, cancel }) => {
-      // HTML에서 Blob URL 추출
-      const html = formData.get('content')?.toString() || '';
-      const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
-      const matches = Array.from(html.matchAll(imgRegex));
-      const blobUrls = matches
-        .map(match => match[1])
-        .filter(url => url.startsWith('blob:'));
-
-      // Blob URL에 대응하는 File 객체들을 FormData에 추가
-      blobUrls.forEach((blobUrl, index) => {
-        const file = imageFiles.get(blobUrl);
-        if (file) {
-          formData.append(`image_${index}`, file);
-          formData.append(`image_url_${index}`, blobUrl);
-        }
-      });
-
-      return async ({ result, update }) => {
-        try {
-          // 기본 업데이트 먼저 수행 (redirect 포함)
-          await update();
-          
-          // result가 있을 때만 토스트 표시
-          if (result) {
-            if (result.type === 'success' || result.type === 'redirect') {
-              showToast('게시글이 수정되었습니다.', 'success');
-              // 성공 시 이미지 파일 맵 초기화
-              imageFiles.clear();
-            } else if (result.type === 'failure' && result.data?.error) {
-              showToast(result.data.error, 'error');
-            }
-          }
-        } catch (error) {
-          console.error('폼 제출 오류:', error);
-          showToast('게시글 수정 중 오류가 발생했습니다.', 'error');
-        }
-      };
-    }}
+    onsubmit={handleSubmit}
     class="rounded-2xl bg-white/80 backdrop-blur-sm p-8 sm:p-10 ring-1 ring-black/5 shadow-sm"
   >
     <!-- 에러 메시지 -->
@@ -195,9 +236,7 @@
         class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.title ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
         required
         oninput={() => {
-          if (!touchedFields.title) {
-            touchedFields.title = true;
-          }
+          touchedFields.title = true;
           validateTitle();
         }}
         onblur={() => {
@@ -215,7 +254,7 @@
       <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
         내용
       </label>
-      <input type="hidden" name="content" value={content} />
+      <!-- hidden input 제거 (수동 FormData 사용) -->
       <div class="{allFieldErrors.content ? 'ring-2 ring-red-300 rounded-2xl' : ''}">
         <RichTextEditor
           value={content}
@@ -228,7 +267,17 @@
           }}
           onImageAdd={(blobUrl, file) => {
             // Blob URL과 File 객체를 매핑하여 저장
+            const isFirstImage = imageFiles.size === 0;
             imageFiles.set(blobUrl, file);
+            
+            // 첫 번째 이미지 업로드 시 토스트 메시지 표시
+            if (isFirstImage) {
+              showToast({
+                message: '첫 번째 이미지가 게시글 목록의 썸네일로 사용됩니다.',
+                type: 'info',
+                duration: 4000
+              });
+            }
           }}
         />
       </div>
@@ -237,8 +286,8 @@
       {/if}
     </div>
 
-    {#if data.post?.isAnonymous}
-      <!-- 비밀번호 -->
+    {#if data?.post?.isAnonymous && !isLoggedIn}
+      <!-- 익명 글 관리 비밀번호 -->
       <div class="mb-8">
         <label for="editPassword" class="block text-sm font-medium text-gray-700 mb-2">
           비밀번호 (수정용)
@@ -253,9 +302,7 @@
           class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.editPassword ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
           required
           oninput={() => {
-            if (!touchedFields.editPassword) {
-              touchedFields.editPassword = true;
-            }
+            // 입력 중에도 검사 (빈 값이면 에러 표시 안 함)
             validatePassword();
           }}
           onblur={() => {
@@ -272,7 +319,7 @@
     <!-- 버튼 -->
     <div class="flex flex-col sm:flex-row gap-3 sm:justify-end pt-6 border-t border-gray-200">
       <a
-        href="/posts/{data.post?.id}"
+        href="/posts/{data?.post?.id}"
         class="inline-flex items-center justify-center px-6 py-3 min-h-[44px] bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium ring-1 ring-black/10 shadow-sm hover:shadow"
       >
         취소

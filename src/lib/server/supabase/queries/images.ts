@@ -10,6 +10,7 @@ import type { SessionTokens } from '../auth.js';
  * @param userId 사용자 ID
  * @param postId 게시글 ID
  * @param sessionTokens 세션 토큰
+ * @param startIndex 시작 인덱스 (기본값: 1, 수정 페이지에서는 기존 이미지 개수 + 1)
  * @returns 변환된 HTML (Blob URL이 Storage URL로 치환됨)
  */
 export async function convertBlobUrlsToStorageUrls(
@@ -18,7 +19,8 @@ export async function convertBlobUrlsToStorageUrls(
   blobUrls: string[],
   userId: string,
   postId: string,
-  sessionTokens?: SessionTokens
+  sessionTokens?: SessionTokens,
+  startIndex: number = 1
 ): Promise<string> {
   if (!html || images.length === 0 || blobUrls.length === 0) {
     return html;
@@ -33,7 +35,8 @@ export async function convertBlobUrlsToStorageUrls(
   const uploadPromises = images.map(async (file, index) => {
     try {
       const blobUrl = blobUrls[index];
-      const storageUrl = await uploadImage(file, userId, postId, index + 1, sessionTokens);
+      const imageIndex = startIndex + index; // 시작 인덱스부터 순차적으로 증가
+      const storageUrl = await uploadImage(file, userId, postId, imageIndex, sessionTokens);
       urlMap.set(blobUrl, storageUrl);
       return { blobUrl, storageUrl };
     } catch (error) {

@@ -57,30 +57,44 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
 };
 
 export const actions: Actions = {
-  default: async ({ request, params, cookies }) => {
+  update: async ({ request, params, cookies }) => {
     try {
+      console.log('[EDIT] 액션 시작');
       const postId = params.id;
+      console.log('[EDIT] postId:', postId);
 
       if (!postId) {
+        console.error('[EDIT] postId가 없습니다.');
         return fail(400, {
           error: '게시글 ID가 없습니다.'
         });
       }
 
       const post = await getPostById(postId);
+      console.log('[EDIT] 게시글 조회 완료:', post ? '존재' : '없음');
       if (!post) {
+        console.error('[EDIT] 게시글을 찾을 수 없습니다.');
         return fail(404, { error: '게시글을 찾을 수 없습니다.' });
       }
 
       // 익명 글 판단: post.isAnonymous 사용
       const isAnonymousPost = post.isAnonymous ?? false;
+      console.log('[EDIT] 익명 글 여부:', isAnonymousPost);
 
       const formData = await request.formData();
       const title = formData.get('title')?.toString();
       const content = formData.get('content')?.toString();
       const author = formData.get('author')?.toString();
       const editPassword = formData.get('editPassword')?.toString();
+      console.log('[EDIT] 폼 데이터:', { 
+        title: title?.substring(0, 50), 
+        contentLength: content?.length,
+        author,
+        hasPassword: !!editPassword
+      });
+      
       const user = await getUser(cookies);
+      console.log('[EDIT] 사용자:', user ? (user.email || '익명') : '없음');
       const isOwner = !!user && !!post.userId && user.id === post.userId;
 
       // 필드별 유효성 검사
@@ -127,10 +141,13 @@ export const actions: Actions = {
       // 세션 토큰 가져오기 (RLS 정책 적용을 위해)
       // 익명 글의 경우 세션이 없으면 익명 세션 생성
       let sessionTokens = getSession(cookies);
+      console.log('[EDIT] 초기 세션 토큰:', sessionTokens ? '존재' : '없음');
       if (isAnonymousPost && !sessionTokens) {
+        console.log('[EDIT] 익명 세션 생성 중...');
         // 익명 글 수정을 위해 익명 세션 생성
         const anonymousUser = await getUserOrCreateAnonymous(cookies);
         sessionTokens = getSession(cookies);
+        console.log('[EDIT] 익명 세션 생성 완료:', sessionTokens ? '성공' : '실패');
       }
 
       // 이미지 파일 추출 및 업로드
@@ -138,13 +155,26 @@ export const actions: Actions = {
       const blobUrls: string[] = [];
       let index = 0;
       while (true) {
-        const imageFile = formData.get(`image_${index}`) as File | null;
+        const imageFile = formData.get(`image_${index}`);
         const blobUrl = formData.get(`image_url_${index}`)?.toString();
         if (!imageFile || !blobUrl) break;
-        images.push(imageFile);
-        blobUrls.push(blobUrl);
+        
+        // File 객체인지 확인 (기존 이미지는 Storage URL이므로 File 객체가 아님)
+        if (imageFile instanceof File) {
+          console.log(`[EDIT] 이미지 ${index} 발견:`, { 
+            name: imageFile.name, 
+            size: imageFile.size, 
+            type: imageFile.type,
+            blobUrl: blobUrl.substring(0, 50) 
+          });
+          images.push(imageFile);
+          blobUrls.push(blobUrl);
+        } else {
+          console.log(`[EDIT] 이미지 ${index}는 File 객체가 아님:`, typeof imageFile);
+        }
         index++;
       }
+      console.log('[EDIT] 추출된 이미지 개수:', images.length, 'Blob URL 개수:', blobUrls.length);
 
       // 기존 게시글의 이미지 경로 추출
       const existingImageRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
@@ -153,24 +183,61 @@ export const actions: Actions = {
         .map((m) => m[1])
         .filter((url) => url && !url.startsWith('blob:')); // Blob URL 제외
 
-      // Blob URL을 Storage URL로 변환
+      // 기존 이미지 개수 계산 (Storage URL에서 image_N 패턴 찾기)
+      let existingImageCount = 0;
+      existingImageUrls.forEach((url) => {
+        // Storage URL에서 image_N 패턴 찾기 (예: image_1.jpg, image_2.webp)
+        const imageIndexMatch = url.match(/image_(\d+)\./i);
+        if (imageIndexMatch && imageIndexMatch[1]) {
+          const index = parseInt(imageIndexMatch[1], 10);
+          if (index > existingImageCount) {
+            existingImageCount = index;
+          }
+        }
+      });
+
+      // Blob URL을 Storage URL로 변환 (기존 이미지 개수 + 1부터 시작)
       let finalContent = content || '';
+      console.log('[EDIT] 기존 이미지 개수:', existingImageCount);
       if (images.length > 0 && blobUrls.length > 0 && sessionTokens) {
+        console.log('[EDIT] 이미지 업로드 시작...');
         try {
-          const userId = isAnonymousPost ? (await getUserOrCreateAnonymous(cookies)).id : (user?.id || '');
+          // 익명 글의 경우 익명 사용자 생성, 로그인 글의 경우 기존 user 사용
+          const targetUser = isAnonymousPost 
+            ? await getUserOrCreateAnonymous(cookies)
+            : user;
+          
+          console.log('[EDIT] 대상 사용자:', targetUser ? targetUser.id : '없음');
+          if (!targetUser?.id) {
+            console.error('[EDIT] 사용자 ID를 가져올 수 없습니다.');
+            throw new Error('사용자 ID를 가져올 수 없습니다.');
+          }
+          
+          console.log('[EDIT] convertBlobUrlsToStorageUrls 호출:', {
+            imagesCount: images.length,
+            blobUrlsCount: blobUrls.length,
+            userId: targetUser.id,
+            postId,
+            startIndex: existingImageCount + 1
+          });
+          
           finalContent = await convertBlobUrlsToStorageUrls(
             content || '',
             images,
             blobUrls,
-            userId,
+            targetUser.id,
             postId, // postId 전달
-            {
-              accessToken: sessionTokens.accessToken,
-              refreshToken: sessionTokens.refreshToken
-            }
+            sessionTokens, // sessionTokens 그대로 전달
+            existingImageCount + 1 // 기존 이미지 개수 + 1부터 시작
           );
+          
+          console.log('[EDIT] 이미지 업로드 완료, 변환된 HTML 길이:', finalContent.length);
         } catch (error) {
-          console.error('이미지 업로드 오류:', error);
+          console.error('[EDIT] 이미지 업로드 오류:', error);
+          if (error instanceof Error) {
+            console.error('[EDIT] 에러 메시지:', error.message);
+            console.error('[EDIT] 에러 스택:', error.stack);
+          }
           return fail(500, {
             error: '이미지 업로드 중 오류가 발생했습니다.',
             fieldErrors: {},
@@ -181,6 +248,12 @@ export const actions: Actions = {
             }
           });
         }
+      } else {
+        console.log('[EDIT] 이미지 업로드 건너뜀:', {
+          imagesLength: images.length,
+          blobUrlsLength: blobUrls.length,
+          hasSessionTokens: !!sessionTokens
+        });
       }
 
       // 새 게시글의 이미지 경로 추출
@@ -203,10 +276,7 @@ export const actions: Actions = {
             const urlMatch = imageUrl.match(/post-images\/(.+)$/);
             if (urlMatch && urlMatch[1]) {
               const filePath = urlMatch[1];
-              await deleteImage(filePath, {
-                accessToken: sessionTokens.accessToken,
-                refreshToken: sessionTokens.refreshToken
-              });
+              await deleteImage(filePath, sessionTokens);
             }
           } catch (deleteError) {
             // 이미지 삭제 실패해도 게시글 수정은 진행 (로그만 기록)
@@ -216,6 +286,17 @@ export const actions: Actions = {
       }
 
       // 게시글 수정
+      console.log('[EDIT] updatePost 호출 시작...');
+      console.log('[EDIT] updatePost 파라미터:', {
+        postId,
+        title: title?.substring(0, 50),
+        contentLength: finalContent.length,
+        author_name: isAnonymousPost ? (author || undefined) : (user?.nickname || user?.email || undefined),
+        userId: isAnonymousPost ? null : (user?.id ?? null),
+        hasEditPassword: !!editPassword,
+        hasSessionTokens: !!sessionTokens
+      });
+      
       await updatePost(
         postId,
         {
@@ -230,15 +311,21 @@ export const actions: Actions = {
         sessionTokens || undefined
       );
 
+      console.log('[EDIT] updatePost 완료, 리다이렉트...');
       // 게시글 상세 페이지로 리다이렉트
       throw redirect(303, `/posts/${postId}`);
     } catch (err) {
       // redirect는 throw이므로 그대로 전달
       if (err && typeof err === 'object' && 'status' in err) {
+        console.log('[EDIT] 리다이렉트:', err);
         throw err;
       }
 
-      console.error('게시글 수정 오류:', err);
+      console.error('[EDIT] 게시글 수정 오류:', err);
+      if (err instanceof Error) {
+        console.error('[EDIT] 에러 메시지:', err.message);
+        console.error('[EDIT] 에러 스택:', err.stack);
+      }
       const errorMessage = err instanceof Error ? err.message : '게시글 수정 중 오류가 발생했습니다.';
       // 사용자의 입력/권한 문제는 failure로 내려서(use:enhance) UI에서 즉시 에러를 표시할 수 있게 함
       const status =
