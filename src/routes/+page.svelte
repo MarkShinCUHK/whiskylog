@@ -25,8 +25,28 @@
       <img src="/logo.svg" alt="whiskylog" class="h-24 w-24 sm:h-32 sm:w-32" />
     </div>
     <div class="mb-4">
-      <pre class="text-2xl sm:text-3xl md:text-4xl font-mono font-semibold leading-tight text-whiskey-900 text-center whitespace-pre-line mx-auto">whisky
-log</pre>
+      <!-- 좁은 화면: 2줄 -->
+      <pre class="md:hidden text-[9px] xs:text-[10px] sm:text-xs font-mono leading-tight text-whiskey-900 text-center whitespace-pre mx-auto">██╗    ██╗██╗  ██╗██╗███████╗██╗  ██╗██╗   ██╗
+██║    ██║██║  ██║██║██╔════╝██║ ██╔╝╚██╗ ██╔╝
+██║ █╗ ██║███████║██║███████╗█████╔╝  ╚████╔╝
+██║███╗██║██╔══██║██║╚════██║██╔═██╗   ╚██╔╝
+╚███╔███╔╝██║  ██║██║███████║██║  ██╗   ██║
+ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝╚══════╝╚═╝  ╚═╝   ╚═╝
+
+██╗      ██████╗  ██████╗ 
+██║     ██╔═══██╗██╔════╝ 
+██║     ██║   ██║██║  ███╗
+██║     ██║   ██║██║   ██║
+███████╗╚██████╔╝╚██████╔╝
+╚══════╝ ╚═════╝  ╚═════╝</pre>
+
+      <!-- 넓은 화면: 1줄 -->
+      <pre class="hidden md:block text-[10px] md:text-sm lg:text-base font-mono leading-tight text-whiskey-900 text-center whitespace-pre mx-auto">██╗    ██╗██╗  ██╗██╗███████╗██╗  ██╗██╗   ██╗██╗      ██████╗  ██████╗ 
+██║    ██║██║  ██║██║██╔════╝██║ ██╔╝╚██╗ ██╔╝██║     ██╔═══██╗██╔════╝ 
+██║ █╗ ██║███████║██║███████╗█████╔╝  ╚████╔╝ ██║     ██║   ██║██║  ███╗
+██║███╗██║██╔══██║██║╚════██║██╔═██╗   ╚██╔╝  ██║     ██║   ██║██║   ██║
+╚███╔███╔╝██║  ██║██║███████║██║  ██╗   ██║   ███████╗╚██████╔╝╚██████╔╝
+ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝  ╚═════╝</pre>
     </div>
     <p class="text-lg sm:text-xl text-gray-700 max-w-2xl mx-auto">
       위스키를 사랑하는 사람들이 모여 리뷰와 정보를 공유하는 공간입니다.
