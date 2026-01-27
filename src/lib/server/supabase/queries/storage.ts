@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 
 const STORAGE_BUCKET = 'post-images';
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+const STORAGE_PUBLIC_PREFIX = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
 
 /**
  * 파일 형식 검증 (서버 사이드)
@@ -219,4 +220,69 @@ export async function deletePostImages(
     // 에러가 발생해도 게시글 삭제는 진행 (로그만 기록)
     console.warn(`게시글 이미지 삭제 중 오류 발생 (폴더: ${folderPath}), 게시글은 삭제됩니다.`);
   }
+}
+
+/**
+ * 공개 URL에서 Storage 경로 추출
+ */
+export function getStoragePathFromPublicUrl(publicUrl: string): string | null {
+  try {
+    const url = new URL(publicUrl);
+    const markerIndex = url.pathname.indexOf(STORAGE_PUBLIC_PREFIX);
+    if (markerIndex === -1) return null;
+    return url.pathname.slice(markerIndex + STORAGE_PUBLIC_PREFIX.length);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 공개 URL에 해당하는 Storage 객체 삭제 (같은 버킷인 경우만)
+ */
+export async function deleteStoragePublicUrl(publicUrl: string, sessionTokens?: SessionTokens): Promise<void> {
+  const path = getStoragePathFromPublicUrl(publicUrl);
+  if (!path) return;
+  await deleteImage(path, sessionTokens);
+}
+
+/**
+ * 아바타 업로드 (프로필 이미지 전용)
+ * - 경로: avatars/{userId}/avatar-{timestamp}.webp
+ */
+export async function uploadAvatar(
+  file: File,
+  userId: string,
+  sessionTokens: SessionTokens
+): Promise<string> {
+  // 이미지 파일이 없거나 비어있으면 업로드하지 않음
+  if (!file || file.size === 0) {
+    throw new Error('업로드할 이미지가 없습니다.');
+  }
+
+  if (!validateImageType(file)) {
+    throw new Error('지원하는 이미지 형식은 JPG, PNG, WebP, GIF입니다.');
+  }
+
+  const supabase = createSupabaseClientForSession(sessionTokens);
+  const filePath = `avatars/${userId}/avatar-${Date.now()}.webp`;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const fileData = new Uint8Array(arrayBuffer);
+
+  const { error: uploadError } = await supabase.storage.from(STORAGE_BUCKET).upload(filePath, fileData, {
+    contentType: 'image/webp',
+    upsert: false
+  });
+
+  if (uploadError) {
+    console.error('아바타 업로드 오류:', uploadError);
+    throw new Error(`아바타 업로드에 실패했습니다: ${uploadError.message}`);
+  }
+
+  const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(filePath);
+  if (!urlData?.publicUrl) {
+    throw new Error('아바타 공개 URL을 생성하지 못했습니다.');
+  }
+
+  return urlData.publicUrl;
 }

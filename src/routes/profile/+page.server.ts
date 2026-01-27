@@ -1,7 +1,8 @@
 import { fail } from '@sveltejs/kit';
 import { requireAuth, getSession } from '$lib/server/supabase/auth';
 import { getProfile, upsertProfile } from '$lib/server/supabase/queries/profiles';
-import { createSupabaseClientWithSession } from '$lib/server/supabase/client';
+import { createSupabaseClientForSession } from '$lib/server/supabase/client';
+import { deleteStoragePublicUrl, uploadAvatar } from '$lib/server/supabase/queries/storage';
 
 export async function load({ cookies }) {
   const user = await requireAuth(cookies);
@@ -26,6 +27,7 @@ export const actions = {
     const nickname = formData.get('nickname')?.toString().trim() || '';
     const bio = formData.get('bio')?.toString().trim() || '';
     const avatarUrl = formData.get('avatarUrl')?.toString().trim() || '';
+    const avatarFile = formData.get('avatarFile');
 
     if (nickname.length < 2 || nickname.length > 20) {
       return fail(400, {
@@ -34,7 +36,7 @@ export const actions = {
       });
     }
 
-    const supabase = createSupabaseClientWithSession(sessionTokens);
+    const supabase = createSupabaseClientForSession(sessionTokens);
     const { error: authError } = await supabase.auth.updateUser({
       data: {
         nickname
@@ -47,12 +49,40 @@ export const actions = {
       });
     }
 
+    const previousProfile = await getProfile(user.id, sessionTokens);
+    let finalAvatarUrl = avatarUrl;
+
+    // 파일 업로드가 있으면 URL 입력보다 우선 적용
+    if (avatarFile instanceof File && avatarFile.size > 0) {
+      try {
+        finalAvatarUrl = await uploadAvatar(avatarFile, user.id, sessionTokens);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '아바타 업로드에 실패했습니다.';
+        return fail(400, {
+          error: message,
+          values: { nickname, bio, avatarUrl }
+        });
+      }
+    }
+
+    // 이전 아바타가 Storage 버킷에 있고, 새 아바타와 다르면 삭제 시도
+    if (
+      previousProfile?.avatarUrl &&
+      previousProfile.avatarUrl !== finalAvatarUrl
+    ) {
+      try {
+        await deleteStoragePublicUrl(previousProfile.avatarUrl, sessionTokens);
+      } catch (err) {
+        console.warn('이전 아바타 삭제 실패:', err);
+      }
+    }
+
     const profile = await upsertProfile(
       user.id,
       {
         nickname,
         bio: bio || undefined,
-        avatarUrl: avatarUrl || undefined
+        avatarUrl: finalAvatarUrl || undefined
       },
       sessionTokens
     );

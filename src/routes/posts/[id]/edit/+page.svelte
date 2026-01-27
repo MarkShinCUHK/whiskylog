@@ -195,7 +195,11 @@
       if (!res.ok) {
         // console.error('서버 응답 오류:', res.status, res.statusText);
         const errorData = await res.json().catch(() => ({}));
-        showToast(errorData.error ?? `서버 오류 (${res.status})`, 'error');
+        const message =
+          (typeof errorData?.data?.error === 'string' && errorData.data.error) ||
+          (typeof errorData?.error === 'string' && errorData.error) ||
+          `서버 오류 (${res.status})`;
+        showToast(message, 'error');
         return;
       }
 
@@ -215,9 +219,21 @@
         }
       } else if (result.type === 'failure') {
         // 실패 응답 처리
-        const errorMsg = result.data?.error ?? '게시글 수정에 실패했습니다.';
-        showToast(errorMsg, 'error');
-        // console.error('게시글 수정 실패:', result.data);
+        if (result.data?.fieldErrors) {
+          fieldErrors = result.data.fieldErrors || {};
+          error = result.data?.error ?? '';
+          return;
+        }
+        if (typeof result.data?.error === 'string' && result.data.error.length > 0) {
+          showToast(result.data.error, 'error');
+          return;
+        }
+        // 익명 글에서 400 실패면 비밀번호 오류로 간주해 명확한 메시지 표시
+        if (data?.post?.isAnonymous && result.status === 400) {
+          showToast('비밀번호가 일치하지 않습니다.', 'error');
+          return;
+        }
+        showToast('게시글 수정에 실패했습니다.', 'error');
       } else {
         // 알 수 없는 응답 타입
         // console.error('알 수 없는 응답 타입:', result);

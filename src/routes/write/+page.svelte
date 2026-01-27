@@ -215,7 +215,11 @@
       if (!res.ok) {
         // console.error('서버 응답 오류:', res.status, res.statusText);
         const errorData = await res.json().catch(() => ({}));
-        showToast(errorData.error ?? `서버 오류 (${res.status})`, 'error');
+        const message =
+          (typeof errorData?.data?.error === 'string' && errorData.data.error) ||
+          (typeof errorData?.error === 'string' && errorData.error) ||
+          `서버 오류 (${res.status})`;
+        showToast(message, 'error');
         return;
       }
 
@@ -235,9 +239,14 @@
         }
       } else if (result.type === 'failure') {
         // 실패 응답 처리
+        // 유효성 검증 실패는 토스트 대신 필드 에러로만 처리
+        if (result.data?.fieldErrors) {
+          fieldErrors = result.data.fieldErrors || {};
+          error = result.data?.error ?? '';
+          return;
+        }
         const errorMsg = result.data?.error ?? '게시글 작성에 실패했습니다.';
         showToast(errorMsg, 'error');
-        // console.error('게시글 작성 실패:', result.data);
       } else {
         // 알 수 없는 응답 타입
         // console.error('알 수 없는 응답 타입:', result);
