@@ -1,17 +1,18 @@
 import { error } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/supabase/auth';
+import { getSession, requireAuth } from '$lib/server/supabase/auth';
 import { getMyPosts, getMyPostCount } from '$lib/server/supabase/queries/posts';
 
 const PER_PAGE = 12;
 
 export async function load({ cookies, url }) {
   const user = await requireAuth(cookies);
+  const sessionTokens = getSession(cookies);
   const page = Math.max(1, Number(url.searchParams.get('page') || '1') || 1);
   const offset = (page - 1) * PER_PAGE;
 
   const [posts, totalCount] = await Promise.all([
-    getMyPosts(user.id, PER_PAGE, offset),
-    getMyPostCount(user.id)
+    getMyPosts(user.id, PER_PAGE, offset, sessionTokens),
+    getMyPostCount(user.id, sessionTokens)
   ]);
 
   if (!posts) {
@@ -29,4 +30,3 @@ export async function load({ cookies, url }) {
     posts
   };
 }
-

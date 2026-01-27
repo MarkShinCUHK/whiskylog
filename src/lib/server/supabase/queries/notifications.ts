@@ -2,6 +2,8 @@ import { createSupabaseClientForSession } from '../client.js';
 import type { Notification, NotificationRow } from '../types.js';
 import type { SessionTokens } from '../auth.js';
 
+const NOTIFICATION_COLUMNS = 'id,user_id,actor_id,actor_name,post_id,comment_id,type,read_at,created_at';
+
 type NotificationSelectRow = NotificationRow & {
   posts?: { title?: string | null } | null;
 };
@@ -40,18 +42,16 @@ export async function listNotifications(
 ): Promise<Notification[]> {
   try {
     const supabase = createSupabaseClientForSession(sessionTokens);
+    const safeLimit = input?.limit && input.limit > 0 ? Math.min(input.limit, 100) : 20;
+    const safeOffset = input?.offset && input.offset > 0 ? Math.min(input.offset, 10000) : 0;
 
     let query = supabase
       .from('notifications')
-      .select('*, posts(title)')
+      .select(`${NOTIFICATION_COLUMNS}, posts(title)`)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (input?.offset && input.offset > 0) {
-      query = query.range(input.offset, input.offset + (input.limit ?? 20) - 1);
-    } else if (input?.limit && input.limit > 0) {
-      query = query.limit(input.limit);
-    }
+    query = safeOffset > 0 ? query.range(safeOffset, safeOffset + safeLimit - 1) : query.limit(safeLimit);
 
     const { data, error } = await query;
     if (error) {
@@ -79,7 +79,7 @@ export async function getUnreadNotificationCount(
 
     const { count, error } = await supabase
       .from('notifications')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .is('read_at', null);
 
@@ -108,7 +108,7 @@ export async function getNotificationCount(
 
     const { count, error } = await supabase
       .from('notifications')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('user_id', userId);
 
     if (error) {

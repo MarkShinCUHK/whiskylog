@@ -10,7 +10,7 @@ export async function getLikeCount(postId: string, sessionTokens?: SessionTokens
     
     const { count, error } = await supabase
       .from('likes')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('post_id', postId);
 
     if (error) {

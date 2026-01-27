@@ -59,9 +59,7 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
 export const actions: Actions = {
   update: async ({ request, params, cookies }) => {
     try {
-      console.log('[EDIT] 액션 시작');
       const postId = params.id;
-      console.log('[EDIT] postId:', postId);
 
       if (!postId) {
         console.error('[EDIT] postId가 없습니다.');
@@ -71,7 +69,6 @@ export const actions: Actions = {
       }
 
       const post = await getPostById(postId);
-      console.log('[EDIT] 게시글 조회 완료:', post ? '존재' : '없음');
       if (!post) {
         console.error('[EDIT] 게시글을 찾을 수 없습니다.');
         return fail(404, { error: '게시글을 찾을 수 없습니다.' });
@@ -79,7 +76,6 @@ export const actions: Actions = {
 
       // 익명 글 판단: post.isAnonymous 사용
       const isAnonymousPost = post.isAnonymous ?? false;
-      console.log('[EDIT] 익명 글 여부:', isAnonymousPost);
 
       const formData = await request.formData();
       const title = formData.get('title')?.toString();
@@ -89,15 +85,8 @@ export const actions: Actions = {
       const tags = formData.get('tags')?.toString() ?? '';
       const whiskyId = formData.get('whiskyId')?.toString() ?? '';
       let thumbnailUrl = formData.get('thumbnailUrl')?.toString() ?? '';
-      console.log('[EDIT] 폼 데이터:', { 
-        title: title?.substring(0, 50), 
-        contentLength: content?.length,
-        author,
-        hasPassword: !!editPassword
-      });
       
       const user = await getUser(cookies);
-      console.log('[EDIT] 사용자:', user ? (user.email || '익명') : '없음');
       const isOwner = !!user && !!post.userId && user.id === post.userId;
       const isLoggedIn = !!user && !user.isAnonymous && !!user.email;
 
@@ -145,13 +134,10 @@ export const actions: Actions = {
       // 세션 토큰 가져오기 (RLS 정책 적용을 위해)
       // 익명 글의 경우 세션이 없으면 익명 세션 생성
       let sessionTokens = getSession(cookies);
-      console.log('[EDIT] 초기 세션 토큰:', sessionTokens ? '존재' : '없음');
       if (isAnonymousPost && !sessionTokens) {
-        console.log('[EDIT] 익명 세션 생성 중...');
         // 익명 글 수정을 위해 익명 세션 생성
-        const anonymousUser = await getUserOrCreateAnonymous(cookies);
+        await getUserOrCreateAnonymous(cookies);
         sessionTokens = getSession(cookies);
-        console.log('[EDIT] 익명 세션 생성 완료:', sessionTokens ? '성공' : '실패');
       }
 
       // 이미지 파일 추출 및 업로드
@@ -165,20 +151,11 @@ export const actions: Actions = {
         
         // File 객체인지 확인 (기존 이미지는 Storage URL이므로 File 객체가 아님)
         if (imageFile instanceof File) {
-          console.log(`[EDIT] 이미지 ${index} 발견:`, { 
-            name: imageFile.name, 
-            size: imageFile.size, 
-            type: imageFile.type,
-            blobUrl: blobUrl.substring(0, 50) 
-          });
           images.push(imageFile);
           blobUrls.push(blobUrl);
-        } else {
-          console.log(`[EDIT] 이미지 ${index}는 File 객체가 아님:`, typeof imageFile);
         }
         index++;
       }
-      console.log('[EDIT] 추출된 이미지 개수:', images.length, 'Blob URL 개수:', blobUrls.length);
 
       // 기존 게시글의 이미지 경로 추출
       const existingImageRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
@@ -202,29 +179,18 @@ export const actions: Actions = {
 
       // Blob URL을 Storage URL로 변환 (기존 이미지 개수 + 1부터 시작)
       let finalContent = content || '';
-      console.log('[EDIT] 기존 이미지 개수:', existingImageCount);
       if (images.length > 0 && blobUrls.length > 0 && sessionTokens) {
-        console.log('[EDIT] 이미지 업로드 시작...');
         try {
           // 익명 글의 경우 익명 사용자 생성, 로그인 글의 경우 기존 user 사용
           const targetUser = isAnonymousPost 
             ? await getUserOrCreateAnonymous(cookies)
             : user;
           
-          console.log('[EDIT] 대상 사용자:', targetUser ? targetUser.id : '없음');
           if (!targetUser?.id) {
             console.error('[EDIT] 사용자 ID를 가져올 수 없습니다.');
             throw new Error('사용자 ID를 가져올 수 없습니다.');
           }
-          
-          console.log('[EDIT] convertBlobUrlsToStorageUrls 호출:', {
-            imagesCount: images.length,
-            blobUrlsCount: blobUrls.length,
-            userId: targetUser.id,
-            postId,
-            startIndex: existingImageCount + 1
-          });
-          
+
           const { html, urlMap } = await convertBlobUrlsToStorageUrlsWithMap(
             content || '',
             images,
@@ -239,8 +205,6 @@ export const actions: Actions = {
             const mapped = urlMap.get(thumbnailUrl);
             if (mapped) thumbnailUrl = mapped;
           }
-          
-          console.log('[EDIT] 이미지 업로드 완료, 변환된 HTML 길이:', finalContent.length);
         } catch (error) {
           console.error('[EDIT] 이미지 업로드 오류:', error);
           if (error instanceof Error) {
@@ -260,12 +224,6 @@ export const actions: Actions = {
             }
           });
         }
-      } else {
-        console.log('[EDIT] 이미지 업로드 건너뜀:', {
-          imagesLength: images.length,
-          blobUrlsLength: blobUrls.length,
-          hasSessionTokens: !!sessionTokens
-        });
       }
 
       // 새 게시글의 이미지 경로 추출
@@ -302,17 +260,6 @@ export const actions: Actions = {
       }
 
       // 게시글 수정
-      console.log('[EDIT] updatePost 호출 시작...');
-      console.log('[EDIT] updatePost 파라미터:', {
-        postId,
-        title: title?.substring(0, 50),
-        contentLength: finalContent.length,
-        author_name: isAnonymousPost ? (author || undefined) : (user?.nickname || user?.email || undefined),
-        userId: isAnonymousPost ? null : (user?.id ?? null),
-        hasEditPassword: !!editPassword,
-        hasSessionTokens: !!sessionTokens
-      });
-      
       await updatePost(
         postId,
         {
@@ -330,13 +277,11 @@ export const actions: Actions = {
         sessionTokens || undefined
       );
 
-      console.log('[EDIT] updatePost 완료, 리다이렉트...');
       // 게시글 상세 페이지로 리다이렉트
       throw redirect(303, `/posts/${postId}`);
     } catch (err) {
       // redirect는 throw이므로 그대로 전달
       if (err && typeof err === 'object' && 'status' in err) {
-        console.log('[EDIT] 리다이렉트:', err);
         throw err;
       }
 

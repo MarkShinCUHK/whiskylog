@@ -1,7 +1,7 @@
 import { createSupabaseClientForSession } from '../client.js';
 import type { PostRow, Post } from '../types.js';
 import type { SessionTokens } from '../auth.js';
-import { mapRowToPost } from './posts.js';
+import { mapRowToPost, POST_PUBLIC_COLUMNS } from './posts.js';
 
 type BookmarkWithPost = {
   post: PostRow | null;
@@ -21,7 +21,7 @@ export async function listBookmarkedPosts(
 
     let query = supabase
       .from('bookmarks')
-      .select('post:posts(*)')
+      .select(`post:posts(${POST_PUBLIC_COLUMNS})`)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
@@ -57,7 +57,7 @@ export async function getBookmarkCount(
 
     const { count, error } = await supabase
       .from('bookmarks')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('user_id', userId);
 
     if (error) {

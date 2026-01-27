@@ -7,6 +7,8 @@ import { sanitizePostHtml } from '$lib/server/supabase/queries/posts';
 import { isBookmarked } from '$lib/server/supabase/queries/bookmarks';
 import { getWhiskyById } from '$lib/server/supabase/queries/whiskies';
 
+const COMMENTS_ENABLED = process.env.ENABLE_COMMENTS === 'true';
+
 export async function load({ params, cookies }) {
   try {
     const postId = params.id; // UUID (string)
@@ -39,11 +41,10 @@ export async function load({ params, cookies }) {
 
     // 댓글과 좋아요 정보 로드
     const { user, session: sessionTokens, canSocial } = await getAuthContext(cookies);
-    const enableComments = process.env.ENABLE_COMMENTS === 'true';
     const socialUserId = canSocial && user ? user.id : null;
     
     const [comments, likeCount, userLiked, bookmarked, whisky] = await Promise.all([
-      enableComments
+      COMMENTS_ENABLED
         ? listComments(postId, sessionTokens || undefined).catch(() => [])
         : Promise.resolve([]),
       getLikeCount(postId, sessionTokens || undefined).catch(() => 0), // 에러 발생 시 0 반환
@@ -92,6 +93,9 @@ export async function load({ params, cookies }) {
 export const actions = {
   createComment: async ({ request, params, cookies }) => {
     try {
+      if (!COMMENTS_ENABLED) {
+        return fail(404, { error: '댓글 기능이 비활성화되어 있습니다.' });
+      }
       const postId = params.id;
 
       if (!postId) {
@@ -158,6 +162,9 @@ export const actions = {
   },
   deleteComment: async ({ request, params, cookies }) => {
     try {
+      if (!COMMENTS_ENABLED) {
+        return fail(404, { error: '댓글 기능이 비활성화되어 있습니다.' });
+      }
       // 댓글 삭제는 로그인 사용자 전용 (익명 세션은 허용하지 않음)
       const user = await getUser(cookies);
       if (!user || user.isAnonymous) {
@@ -195,6 +202,9 @@ export const actions = {
   },
   updateComment: async ({ request, params, cookies }) => {
     try {
+      if (!COMMENTS_ENABLED) {
+        return fail(404, { error: '댓글 기능이 비활성화되어 있습니다.' });
+      }
       const user = await getUser(cookies);
       if (!user || user.isAnonymous) {
         return fail(401, { error: '댓글을 수정하려면 로그인이 필요합니다.' });
@@ -374,7 +384,7 @@ export const actions = {
       let sessionTokens = getSession(cookies);
       if (isAnonymousPost && !sessionTokens) {
         // 익명 글 삭제를 위해 익명 세션 생성
-        const anonymousUser = await getUserOrCreateAnonymous(cookies);
+        await getUserOrCreateAnonymous(cookies);
         sessionTokens = getSession(cookies);
       }
 

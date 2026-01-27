@@ -813,7 +813,7 @@ Tailwind 기본 간격 사용:
    - 쓰기 정책: 인증된 사용자(익명 포함)만 작성 가능
    - 수정/삭제 정책: 작성자만 수정/삭제 가능 (`auth.uid() = user_id`)
    - 익명 글은 `is_anonymous` 컬럼으로 식별
-   - RLS 정책: `is_anonymous = true`인 경우 업데이트/삭제 허용
+   - RLS 정책: 익명 글 UPDATE/DELETE는 직접 허용하지 않고 서버 서명 RPC로만 처리
 
 3. ✅ **세션 토큰 기반 클라이언트 생성**
    - `createSupabaseClientWithSession()` 함수 구현
@@ -914,8 +914,9 @@ Tailwind 기본 간격 사용:
 - ✅ **쓰기 정책**: 모든 사용자(익명 포함) 작성 가능
 - ✅ **수정/삭제 정책**: 
   - 로그인 글(`is_anonymous = false`): 작성자(`user_id`)만 수정/삭제 가능
-  - 익명 글(`is_anonymous = true`): RLS에서 허용하되 서버에서 비밀번호 검증으로 보안 보장
+  - 익명 글(`is_anonymous = true`): RLS에서 직접 허용하지 않고 서버 서명 RPC + 서버 비밀번호 검증으로 처리
   - 익명 글은 user_id와 무관하게 비밀번호로만 수정/삭제 가능 (토큰 만료 시 user_id가 바뀔 수 있음)
+  - 익명 글 수정/삭제/전환에는 `ANON_POST_SECRET`이 필요하며 DB 시크릿과 동일해야 함
 - ✅ **Anonymous Auth**: 익명 사용자도 세션을 가지도록 구현
 - ✅ **세션 토큰 기반 클라이언트**: `createSupabaseClientWithSession()` 함수로 RLS 정책 적용
 - ✅ **익명 글 관리**: `is_anonymous` 컬럼으로 익명 글 명확히 식별

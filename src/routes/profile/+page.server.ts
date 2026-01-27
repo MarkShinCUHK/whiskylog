@@ -4,6 +4,17 @@ import { getProfile, upsertProfile } from '$lib/server/supabase/queries/profiles
 import { createSupabaseClientForSession } from '$lib/server/supabase/client';
 import { deleteStoragePublicUrl, uploadAvatar } from '$lib/server/supabase/queries/storage';
 
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export async function load({ cookies }) {
   const user = await requireAuth(cookies);
   const sessionTokens = getSession(cookies);
@@ -32,6 +43,20 @@ export const actions = {
     if (nickname.length < 2 || nickname.length > 20) {
       return fail(400, {
         error: '닉네임은 2~20자로 입력해주세요.',
+        values: { nickname, bio, avatarUrl }
+      });
+    }
+
+    if (avatarUrl && !(avatarFile instanceof File && avatarFile.size > 0) && !isHttpUrl(avatarUrl)) {
+      return fail(400, {
+        error: '프로필 이미지 URL은 http/https 주소만 허용됩니다.',
+        values: { nickname, bio, avatarUrl }
+      });
+    }
+
+    if (avatarFile instanceof File && avatarFile.size > MAX_AVATAR_BYTES) {
+      return fail(400, {
+        error: '프로필 이미지는 5MB 이하만 업로드할 수 있습니다.',
         values: { nickname, bio, avatarUrl }
       });
     }

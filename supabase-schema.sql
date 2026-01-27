@@ -5,6 +5,9 @@
 -- 2. 아래 SQL을 복사하여 실행
 -- 3. RLS는 MVP 단계에서 활성화하여 사용 (아래 정책 참고)
 
+-- Postgres 확장(pgcrypto): gen_random_uuid, hmac 등에 사용
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- posts 테이블 생성
 CREATE TABLE IF NOT EXISTS posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -169,19 +172,430 @@ CREATE INDEX IF NOT EXISTS idx_bookmarks_post_id ON bookmarks(post_id);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_updated_at ON profiles(updated_at DESC);
 
+-- 안전한 검색 RPC (문자열 조립 기반 .or(...) 회피)
+-- - PostgREST 필터 문자열에 사용자 입력을 직접 넣지 않기 위해 DB 함수로 이동
+-- - SECURITY INVOKER: RLS 정책을 그대로 따름
+CREATE OR REPLACE FUNCTION public.search_posts(
+  p_query TEXT,
+  p_author TEXT DEFAULT NULL,
+  p_from TIMESTAMPTZ DEFAULT NULL,
+  p_to TIMESTAMPTZ DEFAULT NULL,
+  p_sort TEXT DEFAULT 'newest',
+  p_limit INTEGER DEFAULT 12,
+  p_offset INTEGER DEFAULT 0
+)
+RETURNS TABLE (
+  id UUID,
+  title TEXT,
+  content TEXT,
+  author_name TEXT,
+  user_id UUID,
+  is_anonymous BOOLEAN,
+  whisky_id UUID,
+  thumbnail_url TEXT,
+  tags TEXT[],
+  created_at TIMESTAMPTZ,
+  view_count INTEGER
+)
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_query TEXT := btrim(COALESCE(p_query, ''));
+  v_author TEXT := NULLIF(btrim(COALESCE(p_author, '')), '');
+  v_sort TEXT := lower(COALESCE(p_sort, 'newest'));
+  v_limit INTEGER := LEAST(GREATEST(COALESCE(p_limit, 12), 0), 100);
+  v_offset INTEGER := LEAST(GREATEST(COALESCE(p_offset, 0), 0), 10000);
+BEGIN
+  IF v_query = '' THEN
+    RETURN;
+  END IF;
+
+  IF v_sort NOT IN ('newest', 'oldest', 'views') THEN
+    v_sort := 'newest';
+  END IF;
+
+  RETURN QUERY
+  WITH filtered AS (
+    SELECT
+      posts.id,
+      posts.title,
+      posts.content,
+      posts.author_name,
+      posts.user_id,
+      posts.is_anonymous,
+      posts.whisky_id,
+      posts.thumbnail_url,
+      posts.tags,
+      posts.created_at,
+      posts.view_count
+    FROM posts
+    WHERE
+      (posts.title ILIKE '%' || v_query || '%' OR posts.content ILIKE '%' || v_query || '%')
+      AND (v_author IS NULL OR posts.author_name ILIKE '%' || v_author || '%')
+      AND (p_from IS NULL OR posts.created_at >= p_from)
+      AND (p_to IS NULL OR posts.created_at <= p_to)
+  )
+  SELECT *
+  FROM filtered
+  ORDER BY
+    CASE WHEN v_sort = 'views' THEN filtered.view_count END DESC,
+    CASE WHEN v_sort = 'oldest' THEN filtered.created_at END ASC,
+    CASE WHEN v_sort <> 'oldest' THEN filtered.created_at END DESC
+  LIMIT v_limit
+  OFFSET v_offset;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.search_posts(
+  TEXT,
+  TEXT,
+  TIMESTAMPTZ,
+  TIMESTAMPTZ,
+  TEXT,
+  INTEGER,
+  INTEGER
+) TO anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.search_posts_count(
+  p_query TEXT,
+  p_author TEXT DEFAULT NULL,
+  p_from TIMESTAMPTZ DEFAULT NULL,
+  p_to TIMESTAMPTZ DEFAULT NULL
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_query TEXT := btrim(COALESCE(p_query, ''));
+  v_author TEXT := NULLIF(btrim(COALESCE(p_author, '')), '');
+  v_count INTEGER := 0;
+BEGIN
+  IF v_query = '' THEN
+    RETURN 0;
+  END IF;
+
+  SELECT COUNT(*) INTO v_count
+  FROM posts
+  WHERE
+    (posts.title ILIKE '%' || v_query || '%' OR posts.content ILIKE '%' || v_query || '%')
+    AND (v_author IS NULL OR posts.author_name ILIKE '%' || v_author || '%')
+    AND (p_from IS NULL OR posts.created_at >= p_from)
+    AND (p_to IS NULL OR posts.created_at <= p_to);
+
+  RETURN COALESCE(v_count, 0);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.search_posts_count(
+  TEXT,
+  TEXT,
+  TIMESTAMPTZ,
+  TIMESTAMPTZ
+) TO anon, authenticated;
+
+-- 익명 글 수정/삭제를 위한 서버 서명 기반 RPC
+--
+-- 목표:
+-- - 익명 글은 "비밀번호를 아는 경우"에만 수정/삭제 가능해야 함
+-- - 동시에 RLS에서 익명 글을 누구나 UPDATE/DELETE할 수 있게 두면 치명적 취약점이 됨
+-- - 해결: 익명 글의 UPDATE/DELETE는 RLS에서 막고, 서버만 만들 수 있는 서명으로 우회
+--
+-- 사용 방법(필수):
+-- 1) 서버 환경 변수에 ANON_POST_SECRET 설정
+-- 2) 아래 app_private.app_secrets의 anon_post_secret 값을 같은 값으로 교체
+
+-- 비공개 스키마 및 시크릿 테이블
+CREATE SCHEMA IF NOT EXISTS app_private;
+
+CREATE TABLE IF NOT EXISTS app_private.app_secrets (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 기본값은 반드시 교체해야 함
+INSERT INTO app_private.app_secrets (key, value)
+VALUES ('anon_post_secret', 'CHANGE_ME')
+ON CONFLICT (key) DO NOTHING;
+
+-- 비공개 스키마/테이블 권한 차단
+REVOKE ALL ON SCHEMA app_private FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON ALL TABLES IN SCHEMA app_private FROM PUBLIC, anon, authenticated;
+
+-- 시크릿 조회 함수 (직접 호출 금지)
+CREATE OR REPLACE FUNCTION app_private.get_secret(p_key TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = app_private
+AS $$
+DECLARE
+  v_secret TEXT;
+BEGIN
+  SELECT value INTO v_secret
+  FROM app_private.app_secrets
+  WHERE key = p_key;
+
+  IF v_secret IS NULL OR v_secret = 'CHANGE_ME' THEN
+    RAISE EXCEPTION 'app secret % not configured', p_key;
+  END IF;
+
+  RETURN v_secret;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION app_private.get_secret(TEXT) FROM PUBLIC, anon, authenticated;
+
+-- 서버 서명 검증 함수 (직접 호출 금지)
+CREATE OR REPLACE FUNCTION app_private.verify_anon_post_signature(
+  p_post_id UUID,
+  p_operation TEXT,
+  p_signature TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = app_private, extensions
+AS $$
+DECLARE
+  v_secret TEXT;
+  v_expected TEXT;
+BEGIN
+  v_secret := app_private.get_secret('anon_post_secret');
+  v_expected := encode(
+    extensions.hmac(
+      convert_to(p_post_id::text || ':' || COALESCE(p_operation, ''), 'utf8'),
+      convert_to(v_secret, 'utf8'),
+      'sha256'::text
+    ),
+    'hex'
+  );
+  RETURN v_expected = COALESCE(p_signature, '');
+END;
+$$;
+
+REVOKE ALL ON FUNCTION app_private.verify_anon_post_signature(UUID, TEXT, TEXT)
+FROM PUBLIC, anon, authenticated;
+
+-- 익명 글 전환(회원가입 시) 서명 검증 함수 (직접 호출 금지)
+CREATE OR REPLACE FUNCTION app_private.verify_anon_conversion_signature(
+  p_old_user_id UUID,
+  p_new_user_id UUID,
+  p_signature TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = app_private, extensions
+AS $$
+DECLARE
+  v_secret TEXT;
+  v_expected TEXT;
+BEGIN
+  v_secret := app_private.get_secret('anon_post_secret');
+  v_expected := encode(
+    extensions.hmac(
+      convert_to(p_old_user_id::text || ':' || p_new_user_id::text || ':convert_anon_posts', 'utf8'),
+      convert_to(v_secret, 'utf8'),
+      'sha256'::text
+    ),
+    'hex'
+  );
+  RETURN v_expected = COALESCE(p_signature, '');
+END;
+$$;
+
+REVOKE ALL ON FUNCTION app_private.verify_anon_conversion_signature(UUID, UUID, TEXT)
+FROM PUBLIC, anon, authenticated;
+
+-- 익명 글 비밀번호 해시 조회 (서버 서명 필요)
+CREATE OR REPLACE FUNCTION public.get_anonymous_post_hash(
+  p_post_id UUID,
+  p_signature TEXT
+)
+RETURNS TABLE (
+  edit_password_hash TEXT,
+  is_anonymous BOOLEAN
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, app_private
+AS $$
+BEGIN
+  IF NOT app_private.verify_anon_post_signature(p_post_id, 'read_hash', p_signature) THEN
+    RAISE EXCEPTION 'invalid anon post signature (read_hash)';
+  END IF;
+
+  RETURN QUERY
+  SELECT posts.edit_password_hash, posts.is_anonymous
+  FROM posts
+  WHERE posts.id = p_post_id
+    AND posts.is_anonymous = true;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'anonymous post not found';
+  END IF;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_anonymous_post_hash(UUID, TEXT) TO anon, authenticated;
+
+-- 익명 글 수정 (서버 서명 필요, 비밀번호 검증은 서버에서 수행)
+CREATE OR REPLACE FUNCTION public.update_anonymous_post(
+  p_post_id UUID,
+  p_signature TEXT,
+  p_title TEXT,
+  p_content TEXT,
+  p_author_name TEXT,
+  p_whisky_id UUID,
+  p_thumbnail_url TEXT,
+  p_tags TEXT[]
+)
+RETURNS TABLE (
+  id UUID,
+  title TEXT,
+  content TEXT,
+  author_name TEXT,
+  user_id UUID,
+  is_anonymous BOOLEAN,
+  whisky_id UUID,
+  thumbnail_url TEXT,
+  tags TEXT[],
+  created_at TIMESTAMPTZ,
+  view_count INTEGER
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, app_private
+AS $$
+BEGIN
+  IF NOT app_private.verify_anon_post_signature(p_post_id, 'anon_update', p_signature) THEN
+    RAISE EXCEPTION 'invalid anon post signature (anon_update)';
+  END IF;
+
+  PERFORM 1
+  FROM posts AS p
+  WHERE p.id = p_post_id
+    AND p.is_anonymous = true
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'anonymous post not found or not anonymous';
+  END IF;
+
+  UPDATE posts AS p
+  SET
+    title = COALESCE(p_title, p.title),
+    content = COALESCE(p_content, p.content),
+    author_name = COALESCE(p_author_name, p.author_name),
+    whisky_id = p_whisky_id,
+    thumbnail_url = p_thumbnail_url,
+    tags = COALESCE(p_tags, p.tags)
+  WHERE p.id = p_post_id;
+
+  RETURN QUERY
+  SELECT
+    posts.id,
+    posts.title,
+    posts.content,
+    posts.author_name,
+    posts.user_id,
+    posts.is_anonymous,
+    posts.whisky_id,
+    posts.thumbnail_url,
+    posts.tags,
+    posts.created_at,
+    posts.view_count
+  FROM posts
+  WHERE posts.id = p_post_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.update_anonymous_post(
+  UUID,
+  TEXT,
+  TEXT,
+  TEXT,
+  TEXT,
+  UUID,
+  TEXT,
+  TEXT[]
+) TO anon, authenticated;
+
+-- 익명 글 삭제 (서버 서명 필요, 비밀번호 검증은 서버에서 수행)
+CREATE OR REPLACE FUNCTION public.delete_anonymous_post(
+  p_post_id UUID,
+  p_signature TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, app_private
+AS $$
+BEGIN
+  IF NOT app_private.verify_anon_post_signature(p_post_id, 'anon_delete', p_signature) THEN
+    RAISE EXCEPTION 'invalid anon post signature (anon_delete)';
+  END IF;
+
+  DELETE FROM posts
+  WHERE id = p_post_id
+    AND is_anonymous = true;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'anonymous post not found or not anonymous';
+  END IF;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.delete_anonymous_post(UUID, TEXT) TO anon, authenticated;
+
+-- 익명 글 → 회원 글 전환 (회원가입 시, 서버 서명 필요)
+CREATE OR REPLACE FUNCTION public.convert_anonymous_posts(
+  p_old_user_id UUID,
+  p_new_user_id UUID,
+  p_signature TEXT
+)
+RETURNS TABLE (
+  id UUID
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, app_private
+AS $$
+BEGIN
+  IF NOT app_private.verify_anon_conversion_signature(p_old_user_id, p_new_user_id, p_signature) THEN
+    RAISE EXCEPTION 'invalid anon conversion signature (convert_anon_posts)';
+  END IF;
+
+  -- 로그인 세션과 전환 대상 사용자 일치 강제 (서버 버그/오용 방지)
+  IF auth.uid() IS NULL OR auth.uid() <> p_new_user_id THEN
+    RAISE EXCEPTION 'auth uid mismatch for anon conversion';
+  END IF;
+
+  RETURN QUERY
+  UPDATE posts
+  SET
+    is_anonymous = false,
+    user_id = p_new_user_id,
+    edit_password_hash = NULL
+  WHERE user_id = p_old_user_id
+    AND is_anonymous = true
+  RETURNING posts.id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.convert_anonymous_posts(UUID, UUID, TEXT) TO anon, authenticated;
+
 -- RLS (Row Level Security) 설정
--- 
--- Anonymous Auth와 함께 사용하여 익명 사용자도 인증된 사용자로 처리
--- 
--- 익명 글 보안 정책:
--- - 익명 글(is_anonymous = true)은 user_id와 무관하게 비밀번호로만 수정/삭제 가능
--- - 토큰 만료 시 user_id가 바뀔 수 있으므로 user_id 기반 권한 검사 불가
--- - RLS 정책: 익명 글은 누구나 수정/삭제 시도 가능 (서버에서 비밀번호 검증으로 보안 보장)
--- - 실제 보안: 서버 사이드에서 비밀번호 해시 검증을 철저히 수행
--- 
--- 로그인 글 보안 정책:
--- - 로그인 글(user_id IS NOT NULL AND is_anonymous = false)은 작성자(user_id)만 수정/삭제 가능
--- - RLS 정책: auth.uid() = user_id인 경우에만 수정/삭제 허용
+--
+-- 핵심 원칙:
+-- - 익명 글 UPDATE/DELETE는 RLS에서 허용하지 않음 (직접 호출 차단)
+-- - 익명 글 수정/삭제는 서버 서명 + RPC 경로로만 허용
+-- - 로그인 글은 기존처럼 작성자만 UPDATE/DELETE 허용
 
 -- 1. RLS 활성화
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
@@ -193,125 +607,163 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- 2. posts 테이블 정책
 -- 읽기: 모든 사용자 (익명 포함) 읽기 가능
+DROP POLICY IF EXISTS "Anyone can read posts" ON posts;
 CREATE POLICY "Anyone can read posts"
 ON posts FOR SELECT
 USING (true);
 
--- 작성: 모든 사용자 (익명 포함) 작성 가능
--- Anonymous Auth를 사용하면 익명 사용자도 auth.uid()를 가짐
-CREATE POLICY "Anyone can insert posts"
+-- 작성: 인증된 사용자(익명 포함)만 작성 가능
+-- auth.uid()와 user_id를 일치시켜 직접 DB 호출 우회를 줄임
+DROP POLICY IF EXISTS "Anyone can insert posts" ON posts;
+DROP POLICY IF EXISTS "Authenticated users can insert posts" ON posts;
+CREATE POLICY "Authenticated users can insert posts"
 ON posts FOR INSERT
-WITH CHECK (true);
+WITH CHECK (
+  auth.role() = 'authenticated'
+  AND (user_id IS NULL OR auth.uid() = user_id)
+);
 
--- 수정: 로그인 글은 작성자만, 익명 글은 서버에서 비밀번호 검증
--- 주의: 익명 글(is_anonymous = true)은 RLS에서 누구나 수정 시도 가능
---       실제 보안은 서버 사이드 비밀번호 검증으로 보장 (user_id 무관)
-CREATE POLICY "Users can update own posts or anonymous posts"
+-- 수정: 로그인 글(비익명) 작성자만 허용
+-- 익명 글은 RLS로는 수정 불가 (서버 서명 RPC로만 수정)
+DROP POLICY IF EXISTS "Users can update own posts or anonymous posts" ON posts;
+DROP POLICY IF EXISTS "Users can update own non-anonymous posts" ON posts;
+CREATE POLICY "Users can update own non-anonymous posts"
 ON posts FOR UPDATE
 USING (
-  -- 로그인 글: 작성자 본인만 (user_id로 권한 검사)
-  (user_id IS NOT NULL AND auth.uid() = user_id)
-  OR
-  -- 익명 글: RLS는 허용하되 서버에서 비밀번호 검증 필수 (user_id 무관)
-  (is_anonymous = true)
+  is_anonymous = false
+  AND user_id IS NOT NULL
+  AND auth.uid() = user_id
+)
+WITH CHECK (
+  is_anonymous = false
+  AND user_id IS NOT NULL
+  AND auth.uid() = user_id
 );
 
--- 삭제: 로그인 글은 작성자만, 익명 글은 서버에서 비밀번호 검증
--- 주의: 익명 글(is_anonymous = true)은 RLS에서 누구나 삭제 시도 가능
---       실제 보안은 서버 사이드 비밀번호 검증으로 보장 (user_id 무관)
-CREATE POLICY "Users can delete own posts or anonymous posts"
+-- 삭제: 로그인 글(비익명) 작성자만 허용
+-- 익명 글은 RLS로는 삭제 불가 (서버 서명 RPC로만 삭제)
+DROP POLICY IF EXISTS "Users can delete own posts or anonymous posts" ON posts;
+DROP POLICY IF EXISTS "Users can delete own non-anonymous posts" ON posts;
+CREATE POLICY "Users can delete own non-anonymous posts"
 ON posts FOR DELETE
 USING (
-  -- 로그인 글: 작성자 본인만 (user_id로 권한 검사)
-  (user_id IS NOT NULL AND auth.uid() = user_id)
-  OR
-  -- 익명 글: RLS는 허용하되 서버에서 비밀번호 검증 필수 (user_id 무관)
-  (is_anonymous = true)
+  is_anonymous = false
+  AND user_id IS NOT NULL
+  AND auth.uid() = user_id
 );
+
+-- 비밀번호 해시 컬럼은 API에서 직접 조회 불가하도록 차단
+REVOKE SELECT (edit_password_hash) ON posts FROM anon, authenticated;
 
 -- 3. comments 테이블 정책
 -- 읽기: 모든 사용자 읽기 가능
+DROP POLICY IF EXISTS "Anyone can read comments" ON comments;
 CREATE POLICY "Anyone can read comments"
 ON comments FOR SELECT
 USING (true);
 
 -- 작성: 모든 인증된 사용자(익명 포함) 작성 가능
 -- Anonymous Auth를 사용하면 익명 사용자도 auth.role() = 'authenticated'를 가짐
+DROP POLICY IF EXISTS "Authenticated users can insert comments" ON comments;
 CREATE POLICY "Authenticated users can insert comments"
 ON comments FOR INSERT
 WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = user_id);
 
 -- 수정: 작성자 본인만
+DROP POLICY IF EXISTS "Users can update own comments" ON comments;
 CREATE POLICY "Users can update own comments"
 ON comments FOR UPDATE
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
 -- 삭제: 작성자 본인만
+DROP POLICY IF EXISTS "Users can delete own comments" ON comments;
 CREATE POLICY "Users can delete own comments"
 ON comments FOR DELETE
 USING (auth.uid() = user_id);
 
 -- 4. likes 테이블 정책
 -- 읽기: 모든 사용자 읽기 가능
+DROP POLICY IF EXISTS "Anyone can read likes" ON likes;
 CREATE POLICY "Anyone can read likes"
 ON likes FOR SELECT
 USING (true);
 
 -- 작성: 모든 인증된 사용자(익명 포함) 작성 가능
 -- Anonymous Auth를 사용하면 익명 사용자도 auth.role() = 'authenticated'를 가짐
+DROP POLICY IF EXISTS "Authenticated users can insert likes" ON likes;
 CREATE POLICY "Authenticated users can insert likes"
 ON likes FOR INSERT
 WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = user_id);
 
 -- 삭제: 작성자 본인만
+DROP POLICY IF EXISTS "Users can delete own likes" ON likes;
 CREATE POLICY "Users can delete own likes"
 ON likes FOR DELETE
 USING (auth.uid() = user_id);
 
 -- 5. notifications 테이블 정책
 -- 읽기: 본인 알림만
+DROP POLICY IF EXISTS "Users can read own notifications" ON notifications;
 CREATE POLICY "Users can read own notifications"
 ON notifications FOR SELECT
 USING (auth.uid() = user_id);
 
 -- 작성: 알림 발생자만 (actor_id)
+DROP POLICY IF EXISTS "Users can insert notifications" ON notifications;
 CREATE POLICY "Users can insert notifications"
 ON notifications FOR INSERT
-WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = actor_id);
+WITH CHECK (
+  auth.role() = 'authenticated'
+  AND auth.uid() = actor_id
+  -- 알림 수신자는 해당 게시글의 소유자여야 함 (임의 스팸 방지)
+  AND EXISTS (
+    SELECT 1
+    FROM posts
+    WHERE posts.id = notifications.post_id
+      AND posts.user_id = notifications.user_id
+  )
+);
 
 -- 수정: 본인 알림만 (읽음 처리)
+DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
 CREATE POLICY "Users can update own notifications"
 ON notifications FOR UPDATE
 USING (auth.uid() = user_id);
 
 -- 6. bookmarks 테이블 정책
 -- 읽기: 본인 북마크만
+DROP POLICY IF EXISTS "Users can read own bookmarks" ON bookmarks;
 CREATE POLICY "Users can read own bookmarks"
 ON bookmarks FOR SELECT
 USING (auth.uid() = user_id);
 
 -- 작성: 로그인 사용자만
+DROP POLICY IF EXISTS "Authenticated users can insert bookmarks" ON bookmarks;
 CREATE POLICY "Authenticated users can insert bookmarks"
 ON bookmarks FOR INSERT
 WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = user_id);
 
 -- 삭제: 작성자 본인만
+DROP POLICY IF EXISTS "Users can delete own bookmarks" ON bookmarks;
 CREATE POLICY "Users can delete own bookmarks"
 ON bookmarks FOR DELETE
 USING (auth.uid() = user_id);
 
 -- 7. profiles 테이블 정책
 -- 읽기: 모든 사용자
+DROP POLICY IF EXISTS "Anyone can read profiles" ON profiles;
 CREATE POLICY "Anyone can read profiles"
 ON profiles FOR SELECT
 USING (true);
 
 -- 작성/수정: 본인만
+DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
 CREATE POLICY "Users can insert own profile"
 ON profiles FOR INSERT
 WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile"
 ON profiles FOR UPDATE
 USING (auth.uid() = user_id)
@@ -328,26 +780,34 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Storage RLS 정책 설정
 -- 읽기: 모든 사용자 읽기 가능
+DROP POLICY IF EXISTS "Anyone can read post images" ON storage.objects;
 CREATE POLICY "Anyone can read post images"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'post-images');
 
 -- 업로드: 인증된 사용자(익명 포함)만 업로드 가능
+DROP POLICY IF EXISTS "Authenticated users can upload post images" ON storage.objects;
 CREATE POLICY "Authenticated users can upload post images"
 ON storage.objects FOR INSERT
 WITH CHECK (
-  bucket_id = 'post-images' 
+  bucket_id = 'post-images'
   AND auth.role() = 'authenticated'
+  -- 경로 구조 강제: posts/{userId}/... 또는 avatars/{userId}/...
+  -- PostgreSQL 배열은 1-based: [1] = posts|avatars, [2] = userId
+  AND (storage.foldername(name))[1] IN ('posts', 'avatars')
+  AND (storage.foldername(name))[2] = auth.uid()::text
 );
 
 -- 삭제: 업로드한 사용자만 삭제 가능
 -- 경로 구조: posts/{userId}/{postId}/image_{index}.{extension}
--- foldername(name)[0] = 'posts', foldername(name)[1] = userId, foldername(name)[2] = postId
+-- PostgreSQL 배열은 1-based: foldername(name)[1] = posts|avatars, [2] = userId
 -- 기존 정책이 있으면 삭제 후 재생성
 DROP POLICY IF EXISTS "Users can delete own post images" ON storage.objects;
 CREATE POLICY "Users can delete own post images"
 ON storage.objects FOR DELETE
 USING (
-  bucket_id = 'post-images' 
+  bucket_id = 'post-images'
+  -- 경로 구조 강제 + PostgreSQL 배열은 1-based: [2]가 userId
+  AND (storage.foldername(name))[1] IN ('posts', 'avatars')
   AND auth.uid()::text = (storage.foldername(name))[2]
 );

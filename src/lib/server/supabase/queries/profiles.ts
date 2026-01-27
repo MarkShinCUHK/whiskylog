@@ -2,6 +2,8 @@ import { createSupabaseClientForSession } from '../client.js';
 import type { Profile, ProfileRow } from '../types.js';
 import type { SessionTokens } from '../auth.js';
 
+const PROFILE_COLUMNS = 'user_id,nickname,bio,avatar_url,updated_at';
+
 function mapRowToProfile(row: ProfileRow): Profile {
   return {
     userId: row.user_id,
@@ -18,7 +20,7 @@ export async function getProfile(userId: string, sessionTokens?: SessionTokens):
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select(PROFILE_COLUMNS)
       .eq('user_id', userId)
       .single();
 
@@ -54,7 +56,7 @@ export async function upsertProfile(
         },
         { onConflict: 'user_id' }
       )
-      .select()
+      .select(PROFILE_COLUMNS)
       .single();
 
     if (error) {

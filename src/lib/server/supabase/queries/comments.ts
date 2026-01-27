@@ -2,6 +2,8 @@ import { createSupabaseClientForSession } from '../client.js';
 import type { Comment, CommentRow } from '../types.js';
 import type { SessionTokens } from '../auth.js';
 
+const COMMENT_COLUMNS = 'id,post_id,user_id,content,created_at,updated_at';
+
 /**
  * Supabase row를 Comment 타입으로 변환
  */
@@ -37,7 +39,7 @@ export async function listComments(postId: string, sessionTokens?: SessionTokens
     
     const { data, error } = await supabase
       .from('comments')
-      .select('*')
+      .select(COMMENT_COLUMNS)
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
 
@@ -92,7 +94,7 @@ export async function createComment(
         user_id: userId,
         content: content.trim()
       })
-      .select()
+      .select(COMMENT_COLUMNS)
       .single();
 
     if (error) {
@@ -149,7 +151,7 @@ export async function updateComment(
         updated_at: new Date().toISOString()
       })
       .eq('id', commentId)
-      .select()
+      .select(COMMENT_COLUMNS)
       .single();
 
     if (error) {

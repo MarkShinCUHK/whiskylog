@@ -37,9 +37,11 @@ Supabase 대시보드 → Authentication → URL Configuration
 npm install
 
 # 환경 변수 설정
-# .env 파일을 생성하고 다음 내용 추가:
+# .env.example을 복사한 뒤 값 채우기:
+# cp .env.example .env
 # PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 # PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+# ANON_POST_SECRET=CHANGE_ME
 
 # 개발 서버 실행
 npm run dev
@@ -67,10 +69,19 @@ npm run dev -- --host
 4. ✅ RLS (Row Level Security) 활성화 완료
    - 읽기: 모든 사용자(익명 포함) 읽기 가능
    - 쓰기: 모든 사용자(익명 포함) 작성 가능
-   - 수정/삭제: 로그인 글은 작성자만, 익명 글은 RLS에서 허용하되 서버에서 비밀번호 검증으로 보안 보장
+   - 수정/삭제: 로그인 글은 작성자만, 익명 글은 RLS에서 직접 허용하지 않고 서버 서명 RPC로만 처리
    - 익명 글은 user_id와 무관하게 비밀번호로만 수정/삭제 가능 (토큰 만료 시 user_id가 바뀔 수 있음)
+   - 익명 글 수정/삭제/전환을 위해 `ANON_POST_SECRET`이 필요하며, DB의 `app_private.app_secrets.anon_post_secret`과 동일해야 함
 5. ✅ Supabase Anonymous Auth 구현 완료 (익명 사용자도 세션을 가지도록 함)
 6. `.env` 파일에 환경 변수 설정 (위 참조)
+7. `ANON_POST_SECRET`을 DB 시크릿과 동일하게 맞추기 (SQL Editor에서 실행)
+
+```sql
+update app_private.app_secrets
+set value = '<ANON_POST_SECRET과 동일한 값>',
+    updated_at = now()
+where key = 'anon_post_secret';
+```
 
 ### 빌드
 
@@ -202,6 +213,7 @@ dramlog/
   - 익명 글(`is_anonymous = true`): user_id와 무관하게 비밀번호로만 수정/삭제
     - 익명 글도 익명 세션의 `user_id`를 가지지만, 토큰 만료 시 `user_id`가 바뀔 수 있으므로 비밀번호로만 관리
     - 로그아웃 상태에서만 비밀번호로 수정/삭제 가능
+    - 익명 글 수정/삭제는 서버 서명 RPC 경로로만 허용 (RLS에서 직접 허용하지 않음)
 
 #### 이미지 삽입 기능 (완료 ✅)
 - ✅ TipTap Image extension 통합 (`@tiptap/extension-image`)
@@ -219,7 +231,7 @@ dramlog/
 - ✅ RLS (Row Level Security) 정책 설정 완료
   - 읽기: 모든 사용자(익명 포함) 읽기 가능
   - 쓰기: 모든 사용자(익명 포함) 작성 가능
-  - 수정/삭제: 로그인 글은 작성자만, 익명 글은 RLS에서 허용하되 서버에서 비밀번호 검증으로 보안 보장
+  - 수정/삭제: 로그인 글은 작성자만, 익명 글은 RLS에서 직접 허용하지 않고 서버 서명 RPC로만 처리
   - 익명 글은 user_id와 무관하게 비밀번호로만 수정/삭제 가능 (토큰 만료 시 user_id가 바뀔 수 있음)
 - ✅ 세션 토큰 기반 클라이언트 생성 (`createSupabaseClientWithSession()`)
 - ✅ 익명 글 관리 개선 (`is_anonymous` 컬럼 추가)
