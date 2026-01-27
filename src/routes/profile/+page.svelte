@@ -89,6 +89,10 @@
     dt.items.add(resized);
     if (input) input.files = dt.files;
   }
+
+  function clearAvatarFile() {
+    avatarFileName = '';
+  }
 </script>
 
 <svelte:head>
@@ -136,7 +140,16 @@
             class="w-full text-sm text-gray-700 file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-whiskey-600 file:text-white hover:file:bg-whiskey-700"
           />
           {#if avatarFileName}
-            <p class="text-xs text-gray-500">선택됨: {avatarFileName} (256×256으로 자동 리사이즈)</p>
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-xs text-gray-500">선택됨: {avatarFileName} (256×256 자동 리사이즈)</p>
+              <button
+                type="button"
+                onclick={clearAvatarFile}
+                class="text-xs text-gray-600 underline underline-offset-2 hover:text-gray-800"
+              >
+                업로드 해제
+              </button>
+            </div>
           {/if}
           <input
             id="avatarUrl"
@@ -144,8 +157,12 @@
             type="url"
             bind:value={avatarUrl}
             placeholder="https://..."
+            disabled={!!avatarFileName}
             class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
           />
+          {#if avatarFileName}
+            <p class="text-xs text-gray-500">파일 업로드가 선택되어 URL 입력이 비활성화되었습니다.</p>
+          {/if}
         </div>
       </div>
     </div>
