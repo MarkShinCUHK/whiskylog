@@ -80,6 +80,26 @@
         </p>
       </a>
 
+      <!-- DB 보기 -->
+      <a
+        href="/whiskies"
+        class="group bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg hover:border-whiskey-300 transition-all"
+      >
+        <div class="flex items-center gap-4 mb-4">
+          <div class="w-12 h-12 rounded-lg bg-whiskey-100 flex items-center justify-center group-hover:bg-whiskey-200 transition-colors">
+            <svg class="w-6 h-6 text-whiskey-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6c0-1.1 3.58-2 8-2s8 .9 8 2-3.58 2-8 2-8-.9-8-2Zm0 6c0 1.1 3.58 2 8 2s8-.9 8-2m-16 6c0 1.1 3.58 2 8 2s8-.9 8-2" />
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-gray-900 group-hover:text-whiskey-600 transition-colors">
+            DB 보기
+          </h2>
+        </div>
+        <p class="text-gray-600 text-sm">
+          위스키 DB를 둘러보고 상세 정보를 확인하세요.
+        </p>
+      </a>
+
       <!-- 문의 -->
       <a
         href="/contact"

@@ -124,6 +124,26 @@ export const actions = {
       const { createComment } = await import('$lib/server/supabase/queries/comments');
       const comment = await createComment(postId, content, user.id, sessionTokens);
 
+      try {
+        const post = await getPostById(postId);
+        if (post?.userId && post.userId !== user.id) {
+          const { createNotification } = await import('$lib/server/supabase/queries/notifications');
+          await createNotification(
+            {
+              userId: post.userId,
+              actorId: user.id,
+              actorName: user.nickname || user.email || null,
+              postId,
+              commentId: comment.id,
+              type: 'comment'
+            },
+            sessionTokens
+          );
+        }
+      } catch (notifyError) {
+        console.warn('댓글 알림 생성 실패:', notifyError);
+      }
+
       // redirect 대신 데이터 반환 (use:enhance로 즉시 반영)
       return { comment };
     } catch (err) {
@@ -238,7 +258,27 @@ export const actions = {
       }
 
       const { toggleLike, getLikeCount, isLiked } = await import('$lib/server/supabase/queries/likes');
-      await toggleLike(postId, user.id, sessionTokens);
+      const likedNow = await toggleLike(postId, user.id, sessionTokens);
+      if (likedNow) {
+        try {
+          const post = await getPostById(postId);
+          if (post?.userId && post.userId !== user.id) {
+            const { createNotification } = await import('$lib/server/supabase/queries/notifications');
+            await createNotification(
+              {
+                userId: post.userId,
+                actorId: user.id,
+                actorName: user.nickname || user.email || null,
+                postId,
+                type: 'like'
+              },
+              sessionTokens
+            );
+          }
+        } catch (notifyError) {
+          console.warn('좋아요 알림 생성 실패:', notifyError);
+        }
+      }
       const [likeCount, liked] = await Promise.all([
         getLikeCount(postId, sessionTokens),
         isLiked(postId, user.id, sessionTokens)

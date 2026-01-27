@@ -30,6 +30,14 @@
         {#if $page.data?.user}
           <a href="/my-posts" class="text-gray-700 hover:text-gray-900 transition-colors font-medium">내 글</a>
           <a href="/bookmarks" class="text-gray-700 hover:text-gray-900 transition-colors font-medium">북마크</a>
+          <a href="/notifications" class="relative text-gray-700 hover:text-gray-900 transition-colors font-medium">
+            알림
+            {#if $page.data?.notifications?.unreadCount > 0}
+              <span class="ml-1 inline-flex items-center justify-center rounded-full bg-whiskey-600 text-white text-[10px] font-semibold px-2 py-0.5">
+                {$page.data.notifications.unreadCount}
+              </span>
+            {/if}
+          </a>
           <a href="/profile" class="text-gray-700 hover:text-gray-900 transition-colors font-medium">프로필</a>
           <a href="/logout" class="px-4 py-2 rounded-xl bg-gray-900/5 hover:bg-gray-900/10 ring-1 ring-black/10 transition-colors font-medium">
             로그아웃
@@ -93,6 +101,18 @@
             onclick={() => (mobileMenuOpen = false)}
           >
             북마크
+          </a>
+          <a
+            href="/notifications"
+            class="flex items-center justify-between py-3 min-h-[44px] px-4 rounded-xl hover:bg-gray-900/5 transition-colors font-medium ring-1 ring-black/10"
+            onclick={() => (mobileMenuOpen = false)}
+          >
+            <span>알림</span>
+            {#if $page.data?.notifications?.unreadCount > 0}
+              <span class="inline-flex items-center justify-center rounded-full bg-whiskey-600 text-white text-[10px] font-semibold px-2 py-0.5">
+                {$page.data.notifications.unreadCount}
+              </span>
+            {/if}
           </a>
           <a
             href="/profile"

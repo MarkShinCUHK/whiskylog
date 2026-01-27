@@ -158,6 +158,7 @@ export function mapRowToPost(row: PostRow): Post {
     userId: row.user_id ?? null,
     isAnonymous: row.is_anonymous ?? false,
     whiskyId: row.whisky_id ?? null,
+    thumbnailUrl: row.thumbnail_url ?? null,
     tags: row.tags ?? [],
     // 선택적 필드들 안전하게 처리
     likes: row.like_count ?? undefined,
@@ -208,7 +209,8 @@ export async function listPosts(limit?: number, offset?: number): Promise<Post[]
 export async function listPostsByTag(
   tag: string,
   limit?: number,
-  offset?: number
+  offset?: number,
+  filters?: PostSearchFilters
 ): Promise<Post[]> {
   try {
     const trimmed = tag.trim();
@@ -218,8 +220,10 @@ export async function listPostsByTag(
     let query = supabase
       .from('posts')
       .select('*')
-      .contains('tags', [trimmed])
-      .order('created_at', { ascending: false });
+      .contains('tags', [trimmed]);
+
+    query = applyPostFilters(query, filters);
+    query = applyPostSort(query, filters?.sort);
 
     if (typeof offset === 'number' && offset >= 0 && limit && limit > 0) {
       query = query.range(offset, offset + limit - 1);
@@ -240,16 +244,19 @@ export async function listPostsByTag(
   }
 }
 
-export async function getPostCountByTag(tag: string): Promise<number> {
+export async function getPostCountByTag(tag: string, filters?: PostSearchFilters): Promise<number> {
   try {
     const trimmed = tag.trim();
     if (!trimmed) return 0;
 
     const supabase = createSupabaseClient();
-    const { count, error } = await supabase
+    let query = supabase
       .from('posts')
       .select('*', { count: 'exact', head: true })
       .contains('tags', [trimmed]);
+
+    query = applyPostFilters(query, filters);
+    const { count, error } = await query;
 
     if (error) {
       console.error('태그 게시글 개수 조회 오류:', error);
@@ -283,12 +290,46 @@ export async function getPostCount(): Promise<number> {
   }
 }
 
+export type PostSearchSort = 'newest' | 'oldest' | 'views';
+export type PostSearchFilters = {
+  author?: string;
+  from?: string;
+  to?: string;
+  sort?: PostSearchSort;
+};
+
+function applyPostFilters(query: any, filters?: PostSearchFilters) {
+  if (!filters) return query;
+  const author = filters.author?.trim();
+  if (author) {
+    query = query.ilike('author_name', `%${author}%`);
+  }
+  if (filters.from) {
+    query = query.gte('created_at', filters.from);
+  }
+  if (filters.to) {
+    query = query.lte('created_at', filters.to);
+  }
+  return query;
+}
+
+function applyPostSort(query: any, sort?: PostSearchSort) {
+  const sortKey = sort || 'newest';
+  if (sortKey === 'oldest') {
+    return query.order('created_at', { ascending: true });
+  }
+  if (sortKey === 'views') {
+    return query.order('view_count', { ascending: false }).order('created_at', { ascending: false });
+  }
+  return query.order('created_at', { ascending: false });
+}
+
 /**
  * 게시글 검색 (제목/내용)
  */
 export async function searchPosts(
   queryText: string,
-  input?: { limit?: number; offset?: number }
+  input?: { limit?: number; offset?: number; filters?: PostSearchFilters }
 ): Promise<Post[]> {
   try {
     const q = queryText.trim();
@@ -298,8 +339,10 @@ export async function searchPosts(
     let query = supabase
       .from('posts')
       .select('*')
-      .or(`title.ilike.%${q}%,content.ilike.%${q}%`)
-      .order('created_at', { ascending: false });
+      .or(`title.ilike.%${q}%,content.ilike.%${q}%`);
+
+    query = applyPostFilters(query, input?.filters);
+    query = applyPostSort(query, input?.filters?.sort);
 
     if (input?.offset && input.offset > 0) {
       query = query.range(input.offset, input.offset + (input.limit ?? 12) - 1);
@@ -320,16 +363,19 @@ export async function searchPosts(
   }
 }
 
-export async function getSearchPostCount(queryText: string): Promise<number> {
+export async function getSearchPostCount(queryText: string, filters?: PostSearchFilters): Promise<number> {
   try {
     const q = queryText.trim();
     if (!q) return 0;
 
     const supabase = createSupabaseClient();
-    const { count, error } = await supabase
+    let query = supabase
       .from('posts')
       .select('*', { count: 'exact', head: true })
       .or(`title.ilike.%${q}%,content.ilike.%${q}%`);
+
+    query = applyPostFilters(query, filters);
+    const { count, error } = await query;
 
     if (error) {
       console.error('검색 개수 조회 오류:', error);
@@ -406,6 +452,7 @@ export async function createPost(
     edit_password?: string;
     user_id?: string | null;
     whisky_id?: string | null;
+    thumbnail_url?: string | null;
     tags?: string[];
   },
   accessToken?: string
@@ -441,6 +488,7 @@ export async function createPost(
         user_id: input.user_id ?? null,
         is_anonymous: isAnonymous,
         whisky_id: input.whisky_id ?? null,
+        thumbnail_url: input.thumbnail_url ?? null,
         tags: normalizeTags(input.tags)
       })
       .select()
@@ -530,6 +578,7 @@ export async function updatePost(
     content?: string;
     author_name?: string;
     whisky_id?: string | null;
+    thumbnail_url?: string | null;
     tags?: string[];
   },
   auth: { editPassword?: string; userId?: string | null },
@@ -594,6 +643,7 @@ export async function updatePost(
     if (input.content !== undefined) updateData.content = sanitizePostHtml(input.content);
     if (input.author_name !== undefined) updateData.author_name = normalizeAuthorName(input.author_name);
     if (input.whisky_id !== undefined) updateData.whisky_id = input.whisky_id;
+    if (input.thumbnail_url !== undefined) updateData.thumbnail_url = input.thumbnail_url;
     if (input.tags !== undefined) updateData.tags = normalizeTags(input.tags);
 
     const { data, error } = await supabase

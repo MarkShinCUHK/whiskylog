@@ -3,7 +3,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { getPostById, updatePost } from '$lib/server/supabase/queries/posts';
 import { listWhiskies } from '$lib/server/supabase/queries/whiskies';
 import { getUser, getSession, getUserOrCreateAnonymous } from '$lib/server/supabase/auth';
-import { convertBlobUrlsToStorageUrls } from '$lib/server/supabase/queries/images.js';
+import { convertBlobUrlsToStorageUrlsWithMap } from '$lib/server/supabase/queries/images.js';
 import { deleteImage } from '$lib/server/supabase/queries/storage.js';
 
 function plainTextFromHtml(html: string) {
@@ -98,6 +98,7 @@ export const actions: Actions = {
       const editPassword = formData.get('editPassword')?.toString();
       const tags = formData.get('tags')?.toString() ?? '';
       const whiskyId = formData.get('whiskyId')?.toString() ?? '';
+      let thumbnailUrl = formData.get('thumbnailUrl')?.toString() ?? '';
       console.log('[EDIT] 폼 데이터:', { 
         title: title?.substring(0, 50), 
         contentLength: content?.length,
@@ -147,7 +148,8 @@ export const actions: Actions = {
             content: content || '',
             author: author || '',
             tags: tags || '',
-            whiskyId: whiskyId || ''
+            whiskyId: whiskyId || '',
+            thumbnailUrl: thumbnailUrl || ''
           }
         });
       }
@@ -235,7 +237,7 @@ export const actions: Actions = {
             startIndex: existingImageCount + 1
           });
           
-          finalContent = await convertBlobUrlsToStorageUrls(
+          const { html, urlMap } = await convertBlobUrlsToStorageUrlsWithMap(
             content || '',
             images,
             blobUrls,
@@ -244,6 +246,11 @@ export const actions: Actions = {
             sessionTokens, // sessionTokens 그대로 전달
             existingImageCount + 1 // 기존 이미지 개수 + 1부터 시작
           );
+          finalContent = html;
+          if (thumbnailUrl && thumbnailUrl.startsWith('blob:')) {
+            const mapped = urlMap.get(thumbnailUrl);
+            if (mapped) thumbnailUrl = mapped;
+          }
           
           console.log('[EDIT] 이미지 업로드 완료, 변환된 HTML 길이:', finalContent.length);
         } catch (error) {
@@ -260,7 +267,8 @@ export const actions: Actions = {
               content: content || '',
               author: author || '',
               tags: tags || '',
-              whiskyId: whiskyId || ''
+              whiskyId: whiskyId || '',
+              thumbnailUrl: thumbnailUrl || ''
             }
           });
         }
@@ -278,6 +286,10 @@ export const actions: Actions = {
       const newImageUrls = newMatches
         .map((m) => m[1])
         .filter((url) => url && !url.startsWith('blob:')); // Blob URL 제외
+
+      if (thumbnailUrl && !newImageUrls.includes(thumbnailUrl)) {
+        thumbnailUrl = newImageUrls[0] || '';
+      }
 
       // 삭제된 이미지 경로 계산 (기존에 있지만 새에는 없는 이미지)
       const deletedImageUrls = existingImageUrls.filter((url) => !newImageUrls.includes(url));
@@ -320,7 +332,8 @@ export const actions: Actions = {
         content: finalContent, // 변환된 HTML 사용
           author_name: isAnonymousPost ? (author || undefined) : (user?.nickname || user?.email || undefined),
           tags: parseTags(tags),
-          whisky_id: whiskyId || null
+          whisky_id: whiskyId || null,
+          thumbnail_url: thumbnailUrl || null
         },
         {
           userId: isAnonymousPost ? null : (user?.id ?? null), // 익명 글은 항상 null

@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS posts (
   tags TEXT[] DEFAULT '{}'::TEXT[],
   -- 위스키 연결
   whisky_id UUID,
+  -- 대표 이미지 URL
+  thumbnail_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -45,6 +47,9 @@ ALTER TABLE posts
 
 ALTER TABLE posts
   ADD COLUMN IF NOT EXISTS whisky_id UUID;
+
+ALTER TABLE posts
+  ADD COLUMN IF NOT EXISTS thumbnail_url TEXT;
 
 -- (선택) whisky_id FK는 위스키 테이블 생성 후 적용
 -- ALTER TABLE posts
@@ -120,6 +125,19 @@ CREATE TABLE IF NOT EXISTS likes (
   UNIQUE(post_id, user_id) -- 중복 좋아요 방지
 );
 
+-- notifications 테이블 생성 (알림)
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL, -- 알림 수신자
+  actor_id UUID NOT NULL, -- 알림 발생자
+  actor_name TEXT,
+  post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  comment_id UUID REFERENCES comments(id) ON DELETE SET NULL,
+  type TEXT NOT NULL CHECK (type IN ('comment', 'like')),
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- bookmarks 테이블 생성 (북마크)
 CREATE TABLE IF NOT EXISTS bookmarks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -144,6 +162,9 @@ CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id);
 CREATE INDEX IF NOT EXISTS idx_likes_post_id ON likes(post_id);
 CREATE INDEX IF NOT EXISTS idx_likes_user_id ON likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_read_at ON notifications(read_at);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_post_id ON bookmarks(post_id);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_updated_at ON profiles(updated_at DESC);
@@ -166,6 +187,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_updated_at ON profiles(updated_at DESC);
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
@@ -247,7 +269,23 @@ CREATE POLICY "Users can delete own likes"
 ON likes FOR DELETE
 USING (auth.uid() = user_id);
 
--- 5. bookmarks 테이블 정책
+-- 5. notifications 테이블 정책
+-- 읽기: 본인 알림만
+CREATE POLICY "Users can read own notifications"
+ON notifications FOR SELECT
+USING (auth.uid() = user_id);
+
+-- 작성: 알림 발생자만 (actor_id)
+CREATE POLICY "Users can insert notifications"
+ON notifications FOR INSERT
+WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = actor_id);
+
+-- 수정: 본인 알림만 (읽음 처리)
+CREATE POLICY "Users can update own notifications"
+ON notifications FOR UPDATE
+USING (auth.uid() = user_id);
+
+-- 6. bookmarks 테이블 정책
 -- 읽기: 본인 북마크만
 CREATE POLICY "Users can read own bookmarks"
 ON bookmarks FOR SELECT
@@ -263,7 +301,7 @@ CREATE POLICY "Users can delete own bookmarks"
 ON bookmarks FOR DELETE
 USING (auth.uid() = user_id);
 
--- 6. profiles 테이블 정책
+-- 7. profiles 테이블 정책
 -- 읽기: 모든 사용자
 CREATE POLICY "Anyone can read profiles"
 ON profiles FOR SELECT

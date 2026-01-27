@@ -22,8 +22,29 @@ export async function convertBlobUrlsToStorageUrls(
   sessionTokens?: SessionTokens,
   startIndex: number = 1
 ): Promise<string> {
+  const { html: converted } = await convertBlobUrlsToStorageUrlsWithMap(
+    html,
+    images,
+    blobUrls,
+    userId,
+    postId,
+    sessionTokens,
+    startIndex
+  );
+  return converted;
+}
+
+export async function convertBlobUrlsToStorageUrlsWithMap(
+  html: string,
+  images: File[],
+  blobUrls: string[],
+  userId: string,
+  postId: string,
+  sessionTokens?: SessionTokens,
+  startIndex: number = 1
+): Promise<{ html: string; urlMap: Map<string, string> }> {
   if (!html || images.length === 0 || blobUrls.length === 0) {
-    return html;
+    return { html, urlMap: new Map() };
   }
 
   if (images.length !== blobUrls.length) {
@@ -60,5 +81,5 @@ export async function convertBlobUrlsToStorageUrls(
     }
   });
 
-  return convertedHtml;
+  return { html: convertedHtml, urlMap };
 }
