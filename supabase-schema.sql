@@ -3,7 +3,7 @@
 -- 사용 방법:
 -- 1. Supabase 대시보드에서 SQL Editor 열기
 -- 2. 아래 SQL을 복사하여 실행
--- 3. RLS는 MVP 단계에서 비활성화 (아래 안내 참조)
+-- 3. RLS는 MVP 단계에서 활성화하여 사용 (아래 정책 참고)
 
 -- posts 테이블 생성
 CREATE TABLE IF NOT EXISTS posts (

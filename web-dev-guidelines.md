@@ -276,7 +276,6 @@ src/lib/
       {post.title}
     </a>
   </h2>
-  <p class="text-gray-600 mb-4">{post.excerpt}</p>
   <div class="flex items-center justify-between text-sm text-gray-500">
     <span>{post.author}</span>
     <span>{post.createdAt}</span>
@@ -739,7 +738,6 @@ Tailwind 기본 간격 사용:
          ```
    - **브라우저 자동완성 방지**:
      - ✅ `autocomplete` 속성 추가:
-       - `excerpt` 필드: `autocomplete="off"`
        - `editPassword` 필드: `autocomplete="new-password"`
        - `editPasswordConfirm` 필드: `autocomplete="new-password"`
        - 수정 페이지 비밀번호: `autocomplete="current-password"`
