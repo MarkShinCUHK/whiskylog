@@ -1,4 +1,4 @@
-# DramLog
+# WhiskyLog
 
 SvelteKit (Svelte 5) + Tailwind CSS 기반의 위스키 리뷰 및 게시글 커뮤니티 웹사이트입니다.
 
@@ -12,7 +12,7 @@ SvelteKit (Svelte 5) + Tailwind CSS 기반의 위스키 리뷰 및 게시글 커
 ## ☁️ 배포 (Vercel)
 
 ### 현재 배포 도메인
-- Production: `https://dramlog-topaz.vercel.app`
+- Production: `https://whiskylog-topaz.vercel.app`
 
 ### 배포 방식
 - GitHub `main` 브랜치에 push하면 **Vercel이 자동으로 Production 배포**합니다.
@@ -25,9 +25,9 @@ SvelteKit (Svelte 5) + Tailwind CSS 기반의 위스키 리뷰 및 게시글 커
 
 ### Supabase Auth 설정 (배포 도메인 반영)
 Supabase 대시보드 → Authentication → URL Configuration
-- **Site URL**: `https://dramlog-topaz.vercel.app`
+- **Site URL**: `https://whiskylog-topaz.vercel.app`
 - **Redirect URLs**:
-  - `https://dramlog-topaz.vercel.app/*`
+  - `https://whiskylog-topaz.vercel.app/*`
   - `https://*.vercel.app/*` (Preview 도메인까지 사용할 경우)
 
 ### 설치 및 실행
@@ -42,6 +42,7 @@ npm install
 # PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 # PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 # ANON_POST_SECRET=CHANGE_ME
+# ANON_POST_SECRET 생성 예시: openssl rand -hex 32
 
 # 개발 서버 실행
 npm run dev
@@ -97,7 +98,7 @@ npm run preview
 ## 📁 프로젝트 구조
 
 ```
-dramlog/
+whiskylog/
 ├── src/
 │   ├── lib/
 │   │   ├── components/          # 재사용 컴포넌트
@@ -279,7 +280,7 @@ dramlog/
 
 ## 🎨 디자인
 
-DramLog를 위한 따뜻한 색감 (골드, 앰버, 다크 브라운)을 사용합니다.
+WhiskyLog를 위한 따뜻한 색감 (골드, 앰버, 다크 브라운)을 사용합니다.
 - **색감**: 위스키 커뮤니티 느낌의 따뜻한 톤
 - **반응형**: Mobile First 접근
 - **UI**: 모던하고 깔끔한 디자인, Tailwind 기본 스타일 활용
@@ -307,7 +308,7 @@ DramLog를 위한 따뜻한 색감 (골드, 앰버, 다크 브라운)을 사용�
   - SSR 안전성 수정, 회원가입 페이지 런타임 에러 제거
   - 레거시 의존성 정리, 요약(excerpt) 필드 제거
   - 문서 동기화 (익명 글 user_id 정책, RLS 설명 일치)
-- **2026-01-22**: Vercel 배포 완료 (Production: `https://dramlog-topaz.vercel.app`, Node 20 고정, 환경변수/Redirect URL 설정)
+- **2026-01-22**: Vercel 배포 완료 (Production: `https://whiskylog-topaz.vercel.app`, Node 20 고정, 환경변수/Redirect URL 설정)
 - **2026-01-22**: MVP 6단계 완료 (폼 실시간 검증, 토스트 알림 시스템, 브라우저 자동완성 방지, 반응형 디자인 개선)
 - **2026-01-21**: MVP 6단계 시작 (모던 UI 리프레시: 헤더/배경/전역 스타일, 메인 페이지 정리, 문의 페이지 추가)
 - **2026-01-21**: MVP 5단계 완료 (검색, 페이지네이션, 댓글, 좋아요)
@@ -315,4 +316,4 @@ DramLog를 위한 따뜻한 색감 (골드, 앰버, 다크 브라운)을 사용�
 - **2026-01-21**: MVP 4단계 완료 (익명 게시판 + 선택 로그인, 로그인 사용자 글 작성)
 - **2026-01-20**: MVP 3단계 완료 (게시글 수정/삭제 기능)
 - **2026-01-20**: Supabase 통합 완료
-- **2026-01-20**: 프로젝트 이름 DramLog로 통일
+- **2026-01-20**: 프로젝트 이름 WhiskyLog로 통일

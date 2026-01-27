@@ -1,6 +1,6 @@
-# DramLog 개발 가이드라인
+# WhiskyLog 개발 가이드라인
 
-이 문서는 SvelteKit (Svelte 5) + Tailwind CSS 기반의 DramLog (위스키 리뷰/게시글 커뮤니티) 개발 시 따라야 할 상세 가이드라인을 정의합니다.
+이 문서는 SvelteKit (Svelte 5) + Tailwind CSS 기반의 WhiskyLog (위스키 리뷰/게시글 커뮤니티) 개발 시 따라야 할 상세 가이드라인을 정의합니다.
 
 ## 📋 목차
 1. [프로젝트 개요](#프로젝트-개요)
@@ -17,7 +17,7 @@
 ## 프로젝트 개요
 
 ### 목표
-- DramLog: 위스키 리뷰 및 게시글 커뮤니티 플랫폼
+- WhiskyLog: 위스키 리뷰 및 게시글 커뮤니티 플랫폼
 - 1인 개발 기준의 MVP 구현
 - 서버사이드 렌더링(SSR) 기반의 빠른 로딩
 - Tailwind CSS만 사용한 스타일링
@@ -39,7 +39,7 @@
 - ✅ 데이터베이스 스키마 생성 (Supabase posts 테이블)
 - ✅ 게시글 CRUD 기능 구현 (생성, 조회, 목록)
 - ✅ Supabase 쿼리 계층 구조 구축 (`src/lib/server/supabase/queries/posts.ts`)
-- ✅ 프로젝트 이름 DramLog로 통일
+- ✅ 프로젝트 이름 WhiskyLog로 통일
 - ✅ 날짜 2026-01-22 기준으로 업데이트
 - ✅ Svelte 5 도입 완료 (신규 컴포넌트는 Runes 모드, 기존 컴포넌트는 점진적 마이그레이션)
 - ✅ 검색 필터 추가 (작성자/날짜/정렬)
@@ -323,7 +323,7 @@ src/lib/
 <nav class="bg-whiskey-900 text-white">
   <div class="max-w-6xl mx-auto px-4 py-4">
     <div class="flex items-center justify-between">
-      <a href="/" class="text-2xl font-bold">DramLog</a>
+      <a href="/" class="text-2xl font-bold">WhiskyLog</a>
       <div class="flex gap-4">
         <a href="/posts" class="hover:text-whiskey-300">게시글</a>
         <a href="/write" class="hover:text-whiskey-300">작성하기</a>
@@ -868,6 +868,7 @@ Tailwind 기본 간격 사용:
    ```
    - **주의**: `PUBLIC_` 접두사가 붙은 변수는 클라이언트에 노출되지만, ANON_KEY는 RLS로 보호됩니다.
    - **주의**: `ANON_POST_SECRET`은 DB 시크릿과 반드시 동일해야 합니다.
+   - **생성 예시**: `openssl rand -hex 32`
 
    ```sql
    update app_private.app_secrets
