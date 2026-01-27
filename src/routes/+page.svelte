@@ -25,12 +25,8 @@
       <img src="/logo.svg" alt="whiskylog" class="h-24 w-24 sm:h-32 sm:w-32" />
     </div>
     <div class="mb-4">
-      <pre class="text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-lg font-mono leading-tight text-whiskey-900 whitespace-pre mx-auto">██╗    ██╗██╗  ██╗██╗███████╗██╗  ██╗██╗   ██╗██╗      ██████╗  ██████╗ 
-██║    ██║██║  ██║██║██╔════╝██║ ██╔╝╚██╗ ██╔╝██║     ██╔═══██╗██╔════╝ 
-██║ █╗ ██║███████║██║███████╗█████╔╝  ╚████╔╝ ██║     ██║   ██║██║  ███╗
-██║███╗██║██╔══██║██║╚════██║██╔═██╗   ╚██╔╝  ██║     ██║   ██║██║   ██║
-╚███╔███╔╝██║  ██║██║███████║██║  ██╗   ██║   ███████╗╚██████╔╝╚██████╔╝
- ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝  ╚═════╝</pre>
+      <pre class="text-2xl sm:text-3xl md:text-4xl font-mono font-semibold leading-tight text-whiskey-900 text-center whitespace-pre-line mx-auto">whisky
+log</pre>
     </div>
     <p class="text-lg sm:text-xl text-gray-700 max-w-2xl mx-auto">
       위스키를 사랑하는 사람들이 모여 리뷰와 정보를 공유하는 공간입니다.

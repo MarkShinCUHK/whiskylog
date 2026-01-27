@@ -13,26 +13,31 @@
   </div>
 
   {#if data?.whiskies?.length}
-    <div class="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-      {#each data.whiskies as whisky}
-        <div class="rounded-2xl bg-white/80 backdrop-blur-sm p-6 ring-1 ring-black/5 shadow-sm">
-          <p class="text-sm text-gray-500 mb-2">{whisky.type || '기타'}</p>
-          <h2 class="text-lg font-bold text-gray-900 mb-2">
-            {whisky.brand ? `${whisky.brand} - ${whisky.name}` : whisky.name}
-          </h2>
-          <div class="flex flex-wrap gap-2 text-xs text-gray-600">
-            {#if whisky.region}
-              <span class="rounded-full bg-whiskey-50 px-3 py-1">{whisky.region}</span>
-            {/if}
-            {#if whisky.age}
-              <span class="rounded-full bg-whiskey-50 px-3 py-1">{whisky.age}년</span>
-            {/if}
-            {#if whisky.abv}
-              <span class="rounded-full bg-whiskey-50 px-3 py-1">ABV {whisky.abv}%</span>
-            {/if}
-          </div>
-        </div>
-      {/each}
+    <div class="overflow-x-auto rounded-2xl bg-white/80 backdrop-blur-sm ring-1 ring-black/5 shadow-sm">
+      <table class="min-w-full text-sm text-gray-800">
+        <thead class="bg-whiskey-50/80 text-xs font-semibold uppercase tracking-wide text-whiskey-900">
+          <tr>
+            <th class="px-4 py-3 text-left">브랜드</th>
+            <th class="px-4 py-3 text-left">이름</th>
+            <th class="px-4 py-3 text-left">타입</th>
+            <th class="px-4 py-3 text-left">지역</th>
+            <th class="px-4 py-3 text-left">숙성</th>
+            <th class="px-4 py-3 text-left">ABV</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-black/5">
+          {#each data.whiskies as whisky}
+            <tr class="hover:bg-whiskey-50/40 transition-colors">
+              <td class="px-4 py-3 font-medium text-gray-900">{whisky.brand || '-'}</td>
+              <td class="px-4 py-3">{whisky.name}</td>
+              <td class="px-4 py-3">{whisky.type || '기타'}</td>
+              <td class="px-4 py-3">{whisky.region || '-'}</td>
+              <td class="px-4 py-3">{whisky.age ? `${whisky.age}년` : '-'}</td>
+              <td class="px-4 py-3">{whisky.abv ? `${whisky.abv}%` : '-'}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
     </div>
   {:else}
     <div class="rounded-2xl bg-white/70 backdrop-blur-sm p-12 text-center ring-1 ring-black/5 shadow-sm">
