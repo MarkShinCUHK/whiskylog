@@ -18,6 +18,18 @@ export type PostRow = {
   comment_count?: number | null;
   tags?: string[] | null;
   rating?: number | null;
+  tasting_avg?: number | null;
+  post_tasting?: {
+    color_100: number;
+    nose_score_x2: number;
+    palate_score_x2: number;
+    finish_score_x2: number;
+  } | null | Array<{
+    color_100: number;
+    nose_score_x2: number;
+    palate_score_x2: number;
+    finish_score_x2: number;
+  }>;
 };
 
 /**
@@ -36,6 +48,27 @@ export type Post = {
   tags?: string[]; // 태그 목록
   views?: number;
   likes?: number;
+  tastingAvg?: number;
+};
+
+export type PostTastingRow = {
+  post_id: string; // UUID
+  color_100: number;
+  nose_score_x2: number;
+  palate_score_x2: number;
+  finish_score_x2: number;
+  created_at: string; // ISO 8601 timestamptz
+  updated_at: string; // ISO 8601 timestamptz
+};
+
+export type PostTasting = {
+  postId: string;
+  color: number; // 0.0 ~ 1.0
+  nose: number; // 0.0 ~ 5.0
+  palate: number; // 0.0 ~ 5.0
+  finish: number; // 0.0 ~ 5.0
+  createdAt: string;
+  updatedAt: string;
 };
 
 /**

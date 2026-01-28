@@ -2,6 +2,8 @@
   import { page } from '$app/stores';
   import { showToast } from '$lib/stores/toast';
   import RichTextEditor from '$lib/components/RichTextEditor.svelte';
+  import StarRating from '$lib/components/StarRating.svelte';
+  import ColorSlider from '$lib/components/ColorSlider.svelte';
   
   type FormState = {
     error?: string;
@@ -13,6 +15,10 @@
       tags?: string;
       whiskyId?: string;
       thumbnailUrl?: string;
+      color?: string;
+      nose?: string;
+      palate?: string;
+      finish?: string;
     };
   };
 
@@ -25,6 +31,10 @@
   let tags = $state('');
   let whiskyId = $state('');
   let thumbnailUrl = $state('');
+  let color = $state(0.5);
+  let nose = $state(0);
+  let palate = $state(0);
+  let finish = $state(0);
   let error = $state('');
   let fieldErrors = $state<Record<string, string>>({});
   let editPassword = $state('');
@@ -49,6 +59,12 @@
       if (data.post.whiskyId) whiskyId = data.post.whiskyId;
       if (data.post.thumbnailUrl) thumbnailUrl = data.post.thumbnailUrl;
     }
+    if (data?.tasting) {
+      color = typeof data.tasting.color === 'number' ? data.tasting.color : color;
+      nose = typeof data.tasting.nose === 'number' ? data.tasting.nose : nose;
+      palate = typeof data.tasting.palate === 'number' ? data.tasting.palate : palate;
+      finish = typeof data.tasting.finish === 'number' ? data.tasting.finish : finish;
+    }
   });
 
   // form이 업데이트되면 상태 동기화
@@ -59,6 +75,10 @@
     if (form?.values?.tags !== undefined) tags = form.values.tags;
     if (form?.values?.whiskyId !== undefined) whiskyId = form.values.whiskyId;
     if (form?.values?.thumbnailUrl !== undefined) thumbnailUrl = form.values.thumbnailUrl;
+    if (form?.values?.color !== undefined) color = Number(form.values.color);
+    if (form?.values?.nose !== undefined) nose = Number(form.values.nose);
+    if (form?.values?.palate !== undefined) palate = Number(form.values.palate);
+    if (form?.values?.finish !== undefined) finish = Number(form.values.finish);
     if (form?.error !== undefined) error = form.error;
     if (form?.fieldErrors !== undefined) fieldErrors = form.fieldErrors || {};
     if (form?.values?.content !== undefined) {
@@ -163,6 +183,10 @@
       formData.append('whiskyId', whiskyId);
     }
     formData.append('thumbnailUrl', thumbnailUrl);
+    formData.append('color', String(color));
+    formData.append('nose', String(nose));
+    formData.append('palate', String(palate));
+    formData.append('finish', String(finish));
 
     if (data?.post?.isAnonymous && !isLoggedIn) {
       if (editPassword) {
@@ -336,15 +360,52 @@
         id="whiskyId"
         name="whiskyId"
         bind:value={whiskyId}
-        class="w-full px-4 py-3 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
+        required
+        class="w-full px-4 py-3 sm:py-2.5 border {allFieldErrors.whiskyId ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-whiskey-500 focus:border-whiskey-500 outline-none transition-colors"
       >
-        <option value="">선택 안 함</option>
+        <option value="" disabled hidden>선택해주세요</option>
         {#each data.whiskies || [] as whisky}
           <option value={whisky.id}>
             {whisky.brand ? `${whisky.brand} - ${whisky.name}` : whisky.name}
           </option>
         {/each}
       </select>
+      {#if allFieldErrors.whiskyId}
+        <p class="mt-2 text-sm text-red-600">{allFieldErrors.whiskyId}</p>
+      {/if}
+    </div>
+
+    <!-- 테이스팅 -->
+    <div class="mb-8 rounded-2xl border border-gray-200 bg-white/80 p-5">
+      <h3 class="text-base font-semibold text-gray-900 mb-4">테이스팅</h3>
+      <div class="space-y-5">
+        <div>
+          <ColorSlider bind:value={color} name="color" label="Color (0.00 ~ 1.00, 0.50 = 앰버)" />
+          {#if allFieldErrors.color}
+            <p class="mt-2 text-sm text-red-600">{allFieldErrors.color}</p>
+          {/if}
+        </div>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div>
+            <StarRating bind:value={nose} name="nose" label="Nose" />
+            {#if allFieldErrors.nose}
+              <p class="mt-2 text-sm text-red-600">{allFieldErrors.nose}</p>
+            {/if}
+          </div>
+          <div>
+            <StarRating bind:value={palate} name="palate" label="Palate" />
+            {#if allFieldErrors.palate}
+              <p class="mt-2 text-sm text-red-600">{allFieldErrors.palate}</p>
+            {/if}
+          </div>
+          <div>
+            <StarRating bind:value={finish} name="finish" label="Finish" />
+            {#if allFieldErrors.finish}
+              <p class="mt-2 text-sm text-red-600">{allFieldErrors.finish}</p>
+            {/if}
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 내용 -->

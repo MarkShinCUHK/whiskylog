@@ -8,9 +8,9 @@ import { env } from '$env/dynamic/private';
 
 const DEFAULT_AUTHOR_NAME = '익명의 위스키 러버';
 export const POST_PUBLIC_COLUMNS =
-  'id,title,content,author_name,user_id,is_anonymous,whisky_id,thumbnail_url,tags,created_at,view_count';
+  'id,title,content,author_name,user_id,is_anonymous,whisky_id,thumbnail_url,tags,created_at,view_count,post_tasting(color_100,nose_score_x2,palate_score_x2,finish_score_x2)';
 
-type AnonSignatureOperation = 'read_hash' | 'anon_update' | 'anon_delete';
+type AnonSignatureOperation = 'read_hash' | 'anon_update' | 'anon_update_tasting' | 'anon_delete';
 
 function getAnonPostSecret(): string {
   const secret = env.ANON_POST_SECRET;
@@ -44,6 +44,26 @@ function normalizeTags(tags?: string[]) {
       .filter((tag) => tag.length > 0)
   );
   return Array.from(unique).slice(0, 10);
+}
+
+function extractTasting(row: PostRow) {
+  const tasting = row.post_tasting as PostRow['post_tasting'];
+  if (!tasting) return null;
+  if (Array.isArray(tasting)) {
+    return tasting[0] ?? null;
+  }
+  if (typeof tasting === 'object') {
+    return tasting;
+  }
+  return null;
+}
+
+function computeTastingAverage(tasting: { nose_score_x2: number; palate_score_x2: number; finish_score_x2: number } | null) {
+  if (!tasting) return undefined;
+  const sum = Number(tasting.nose_score_x2) + Number(tasting.palate_score_x2) + Number(tasting.finish_score_x2);
+  if (!Number.isFinite(sum)) return undefined;
+  const avg = sum / 6;
+  return Math.round(avg * 10) / 10;
 }
 
 /**
@@ -172,6 +192,11 @@ export function sanitizePostHtml(html: string): string {
 export function mapRowToPost(row: PostRow): Post {
   const createdAt = new Date(row.created_at);
   const dateStr = createdAt.toISOString().split('T')[0]; // YYYY-MM-DD
+  const tasting = extractTasting(row);
+  const tastingAvg =
+    typeof row.tasting_avg === 'number'
+      ? Math.round(row.tasting_avg * 10) / 10
+      : computeTastingAverage(tasting);
 
   return {
     id: row.id,
@@ -187,6 +212,7 @@ export function mapRowToPost(row: PostRow): Post {
     // 선택적 필드들 안전하게 처리
     likes: row.like_count ?? undefined,
     views: row.view_count ?? 0,
+    tastingAvg
   };
 }
 
@@ -318,12 +344,23 @@ export async function getPostCount(): Promise<number> {
   }
 }
 
-export type PostSearchSort = 'newest' | 'oldest' | 'views';
+export type PostSearchSort = 'newest' | 'oldest' | 'views' | 'tasting';
 export type PostSearchFilters = {
   author?: string;
   from?: string;
   to?: string;
   sort?: PostSearchSort;
+  tag?: string;
+  avgMin?: number;
+  avgMax?: number;
+  colorMin?: number;
+  colorMax?: number;
+  noseMin?: number;
+  noseMax?: number;
+  palateMin?: number;
+  palateMax?: number;
+  finishMin?: number;
+  finishMax?: number;
 };
 
 function applyPostFilters(query: any, filters?: PostSearchFilters) {
@@ -361,7 +398,6 @@ export async function searchPosts(
 ): Promise<Post[]> {
   try {
     const q = queryText.trim();
-    if (!q) return [];
 
     const supabase = createSupabaseClient();
     const filters = input?.filters;
@@ -371,6 +407,19 @@ export async function searchPosts(
     const author = filters?.author?.trim() || null;
     const from = filters?.from || null;
     const to = filters?.to || null;
+    const tag = filters?.tag?.trim() || null;
+    const avgMin = typeof filters?.avgMin === 'number' ? filters?.avgMin : null;
+    const avgMax = typeof filters?.avgMax === 'number' ? filters?.avgMax : null;
+    const colorMin = typeof filters?.colorMin === 'number' ? filters?.colorMin : null;
+    const colorMax = typeof filters?.colorMax === 'number' ? filters?.colorMax : null;
+    const noseMin = typeof filters?.noseMin === 'number' ? filters?.noseMin : null;
+    const noseMax = typeof filters?.noseMax === 'number' ? filters?.noseMax : null;
+    const palateMin = typeof filters?.palateMin === 'number' ? filters?.palateMin : null;
+    const palateMax = typeof filters?.palateMax === 'number' ? filters?.palateMax : null;
+    const finishMin = typeof filters?.finishMin === 'number' ? filters?.finishMin : null;
+    const finishMax = typeof filters?.finishMax === 'number' ? filters?.finishMax : null;
+
+    if (!q && !tag) return [];
 
     const { data, error } = await supabase.rpc('search_posts', {
       p_query: q,
@@ -379,7 +428,18 @@ export async function searchPosts(
       p_to: to,
       p_sort: sort,
       p_limit: limit,
-      p_offset: offset
+      p_offset: offset,
+      p_tag: tag,
+      p_avg_min: avgMin,
+      p_avg_max: avgMax,
+      p_color_min: colorMin,
+      p_color_max: colorMax,
+      p_nose_min: noseMin,
+      p_nose_max: noseMax,
+      p_palate_min: palateMin,
+      p_palate_max: palateMax,
+      p_finish_min: finishMin,
+      p_finish_max: finishMax
     });
     if (error) {
       console.error('게시글 검색 오류:', error);
@@ -396,18 +456,40 @@ export async function searchPosts(
 export async function getSearchPostCount(queryText: string, filters?: PostSearchFilters): Promise<number> {
   try {
     const q = queryText.trim();
-    if (!q) return 0;
+    const tag = filters?.tag?.trim() || null;
+    if (!q && !tag) return 0;
 
     const supabase = createSupabaseClient();
     const author = filters?.author?.trim() || null;
     const from = filters?.from || null;
     const to = filters?.to || null;
+    const avgMin = typeof filters?.avgMin === 'number' ? filters?.avgMin : null;
+    const avgMax = typeof filters?.avgMax === 'number' ? filters?.avgMax : null;
+    const colorMin = typeof filters?.colorMin === 'number' ? filters?.colorMin : null;
+    const colorMax = typeof filters?.colorMax === 'number' ? filters?.colorMax : null;
+    const noseMin = typeof filters?.noseMin === 'number' ? filters?.noseMin : null;
+    const noseMax = typeof filters?.noseMax === 'number' ? filters?.noseMax : null;
+    const palateMin = typeof filters?.palateMin === 'number' ? filters?.palateMin : null;
+    const palateMax = typeof filters?.palateMax === 'number' ? filters?.palateMax : null;
+    const finishMin = typeof filters?.finishMin === 'number' ? filters?.finishMin : null;
+    const finishMax = typeof filters?.finishMax === 'number' ? filters?.finishMax : null;
 
     const { data, error } = await supabase.rpc('search_posts_count', {
       p_query: q,
       p_author: author,
       p_from: from,
-      p_to: to
+      p_to: to,
+      p_tag: tag,
+      p_avg_min: avgMin,
+      p_avg_max: avgMax,
+      p_color_min: colorMin,
+      p_color_max: colorMax,
+      p_nose_min: noseMin,
+      p_nose_max: noseMax,
+      p_palate_min: palateMin,
+      p_palate_max: palateMax,
+      p_finish_min: finishMin,
+      p_finish_max: finishMax
     });
 
     if (error) {
@@ -493,6 +575,12 @@ export async function createPost(
     whisky_id?: string | null;
     thumbnail_url?: string | null;
     tags?: string[];
+    tasting: {
+      color_100: number;
+      nose_score_x2: number;
+      palate_score_x2: number;
+      finish_score_x2: number;
+    };
   },
   accessToken?: string
 ): Promise<Post> {
@@ -517,24 +605,45 @@ export async function createPost(
 
     const safeContent = sanitizePostHtml(input.content);
 
+    const { data: rpcData, error: rpcError } = await supabase.rpc('create_tasting_post', {
+      p_title: input.title,
+      p_content: safeContent,
+      p_author_name: normalizeAuthorName(input.author_name),
+      p_edit_password_hash: editPasswordHash,
+      p_is_anonymous: isAnonymous,
+      p_whisky_id: input.whisky_id ?? null,
+      p_thumbnail_url: input.thumbnail_url ?? null,
+      p_tags: normalizeTags(input.tags),
+      p_color_100: input.tasting.color_100,
+      p_nose_score_x2: input.tasting.nose_score_x2,
+      p_palate_score_x2: input.tasting.palate_score_x2,
+      p_finish_score_x2: input.tasting.finish_score_x2
+    });
+
+    if (rpcError) {
+      console.error('게시글 생성 RPC 오류:', rpcError);
+      throw rpcError;
+    }
+
+    const postId =
+      typeof rpcData === 'string'
+        ? rpcData
+        : Array.isArray(rpcData)
+          ? (rpcData[0] as { create_tasting_post?: string } | undefined)?.create_tasting_post
+          : (rpcData as { create_tasting_post?: string } | undefined)?.create_tasting_post;
+
+    if (!postId) {
+      throw new Error('게시글 생성 후 ID를 받아오지 못했습니다.');
+    }
+
     const { data, error } = await supabase
       .from('posts')
-      .insert({
-        title: input.title,
-        content: safeContent,
-        author_name: normalizeAuthorName(input.author_name),
-        edit_password_hash: editPasswordHash,
-        user_id: input.user_id ?? null,
-        is_anonymous: isAnonymous,
-        whisky_id: input.whisky_id ?? null,
-        thumbnail_url: input.thumbnail_url ?? null,
-        tags: normalizeTags(input.tags)
-      })
       .select(POST_PUBLIC_COLUMNS)
+      .eq('id', postId)
       .single();
 
     if (error) {
-      console.error('게시글 생성 오류:', error);
+      console.error('게시글 생성 후 조회 오류:', error);
       throw error;
     }
 
@@ -624,6 +733,12 @@ export async function updatePost(
     whisky_id?: string | null;
     thumbnail_url?: string | null;
     tags?: string[];
+    tasting?: {
+      color_100: number;
+      nose_score_x2: number;
+      palate_score_x2: number;
+      finish_score_x2: number;
+    };
   },
   auth: { editPassword?: string; userId?: string | null },
   sessionTokens?: SessionTokens // Optional session tokens for RLS
@@ -653,6 +768,8 @@ export async function updatePost(
     // 익명 글 판단: is_anonymous 컬럼 사용
     const isAnonymousPost = authRow.is_anonymous ?? false;
     
+    const tasting = input.tasting;
+
     // 업데이트할 필드만 구성
     const updateData: Partial<PostRow> = {};
     if (input.title !== undefined) updateData.title = input.title;
@@ -713,6 +830,23 @@ export async function updatePost(
         throw new Error('게시글 수정 후 데이터를 받아오지 못했습니다.');
       }
 
+      if (tasting) {
+        const tastingSignature = signAnonPostOperation(id, 'anon_update_tasting');
+        const { error: tastingError } = await supabase.rpc('update_anonymous_post_tasting', {
+          p_post_id: id,
+          p_signature: tastingSignature,
+          p_color_100: tasting.color_100,
+          p_nose_score_x2: tasting.nose_score_x2,
+          p_palate_score_x2: tasting.palate_score_x2,
+          p_finish_score_x2: tasting.finish_score_x2
+        });
+
+        if (tastingError) {
+          console.error('익명 게시글 테이스팅 수정 오류:', tastingError);
+          throw tastingError;
+        }
+      }
+
       return mapRowToPost(rpcRow as PostRow);
     }
 
@@ -745,6 +879,26 @@ export async function updatePost(
 
     if (!data) {
       throw new Error('게시글 수정 후 데이터를 받아오지 못했습니다.');
+    }
+
+    if (tasting) {
+      const { error: tastingError } = await supabase
+        .from('post_tasting')
+        .upsert(
+          {
+            post_id: id,
+            color_100: tasting.color_100,
+            nose_score_x2: tasting.nose_score_x2,
+            palate_score_x2: tasting.palate_score_x2,
+            finish_score_x2: tasting.finish_score_x2
+          },
+          { onConflict: 'post_id' }
+        );
+
+      if (tastingError) {
+        console.error('게시글 테이스팅 수정 오류:', tastingError);
+        throw tastingError;
+      }
     }
 
     return mapRowToPost(data);

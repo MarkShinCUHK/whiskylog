@@ -6,6 +6,7 @@ import { getLikeCount, isLiked } from '$lib/server/supabase/queries/likes';
 import { sanitizePostHtml } from '$lib/server/supabase/queries/posts';
 import { isBookmarked } from '$lib/server/supabase/queries/bookmarks';
 import { getWhiskyById } from '$lib/server/supabase/queries/whiskies';
+import { getPostTasting } from '$lib/server/supabase/queries/tasting';
 
 const COMMENTS_ENABLED = process.env.ENABLE_COMMENTS === 'true';
 
@@ -43,14 +44,15 @@ export async function load({ params, cookies }) {
     const { user, session: sessionTokens, canSocial } = await getAuthContext(cookies);
     const socialUserId = canSocial && user ? user.id : null;
     
-    const [comments, likeCount, userLiked, bookmarked, whisky] = await Promise.all([
+    const [comments, likeCount, userLiked, bookmarked, whisky, tasting] = await Promise.all([
       COMMENTS_ENABLED
         ? listComments(postId, sessionTokens || undefined).catch(() => [])
         : Promise.resolve([]),
       getLikeCount(postId, sessionTokens || undefined).catch(() => 0), // 에러 발생 시 0 반환
       socialUserId ? isLiked(postId, socialUserId, sessionTokens || undefined).catch(() => false) : Promise.resolve(false),
       socialUserId ? isBookmarked(postId, socialUserId, sessionTokens || undefined).catch(() => false) : Promise.resolve(false),
-      post.whiskyId ? getWhiskyById(post.whiskyId).catch(() => null) : Promise.resolve(null)
+      post.whiskyId ? getWhiskyById(post.whiskyId).catch(() => null) : Promise.resolve(null),
+      getPostTasting(postId).catch(() => null)
     ]);
 
     // 정책:
@@ -73,6 +75,7 @@ export async function load({ params, cookies }) {
       },
       postHtml: sanitizePostHtml(post.content),
       whisky,
+      tasting,
       comments,
       likeCount,
       isLiked: userLiked,

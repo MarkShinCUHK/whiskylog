@@ -88,6 +88,38 @@ CREATE TABLE IF NOT EXISTS whiskies (
 CREATE INDEX IF NOT EXISTS idx_whiskies_name ON whiskies(name);
 CREATE INDEX IF NOT EXISTS idx_whiskies_brand ON whiskies(brand);
 
+-- post_tasting 테이블 생성 (테이스팅 정보)
+CREATE TABLE IF NOT EXISTS post_tasting (
+  post_id UUID PRIMARY KEY REFERENCES posts(id) ON DELETE CASCADE,
+  color_100 SMALLINT NOT NULL,
+  nose_score_x2 SMALLINT NOT NULL,
+  palate_score_x2 SMALLINT NOT NULL,
+  finish_score_x2 SMALLINT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT post_tasting_color_range CHECK (color_100 BETWEEN 0 AND 100),
+  CONSTRAINT post_tasting_nose_range CHECK (nose_score_x2 BETWEEN 0 AND 10),
+  CONSTRAINT post_tasting_palate_range CHECK (palate_score_x2 BETWEEN 0 AND 10),
+  CONSTRAINT post_tasting_finish_range CHECK (finish_score_x2 BETWEEN 0 AND 10)
+);
+
+-- updated_at 자동 갱신 트리거
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS set_post_tasting_updated_at ON post_tasting;
+CREATE TRIGGER set_post_tasting_updated_at
+BEFORE UPDATE ON post_tasting
+FOR EACH ROW
+EXECUTE FUNCTION public.set_updated_at();
+
 -- 조회수 증가 함수 (RLS 우회용, 서버에서 호출)
 CREATE OR REPLACE FUNCTION increment_post_view(p_post_id UUID)
 RETURNS INTEGER
@@ -108,6 +140,87 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION increment_post_view(UUID) TO anon, authenticated;
+
+-- 테이스팅 게시글 생성 RPC (posts + post_tasting)
+CREATE OR REPLACE FUNCTION public.create_tasting_post(
+  p_title TEXT,
+  p_content TEXT,
+  p_author_name TEXT,
+  p_edit_password_hash TEXT,
+  p_is_anonymous BOOLEAN,
+  p_whisky_id UUID,
+  p_thumbnail_url TEXT,
+  p_tags TEXT[],
+  p_color_100 SMALLINT,
+  p_nose_score_x2 SMALLINT,
+  p_palate_score_x2 SMALLINT,
+  p_finish_score_x2 SMALLINT
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_post_id UUID;
+BEGIN
+  INSERT INTO public.posts (
+    title,
+    content,
+    author_name,
+    edit_password_hash,
+    user_id,
+    is_anonymous,
+    whisky_id,
+    thumbnail_url,
+    tags
+  )
+  VALUES (
+    p_title,
+    p_content,
+    COALESCE(p_author_name, '익명의 위스키 러버'),
+    p_edit_password_hash,
+    auth.uid(),
+    p_is_anonymous,
+    p_whisky_id,
+    p_thumbnail_url,
+    COALESCE(p_tags, '{}'::TEXT[])
+  )
+  RETURNING id INTO v_post_id;
+
+  INSERT INTO public.post_tasting (
+    post_id,
+    color_100,
+    nose_score_x2,
+    palate_score_x2,
+    finish_score_x2
+  )
+  VALUES (
+    v_post_id,
+    p_color_100,
+    p_nose_score_x2,
+    p_palate_score_x2,
+    p_finish_score_x2
+  );
+
+  RETURN v_post_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.create_tasting_post(
+  TEXT,
+  TEXT,
+  TEXT,
+  TEXT,
+  BOOLEAN,
+  UUID,
+  TEXT,
+  TEXT[],
+  SMALLINT,
+  SMALLINT,
+  SMALLINT,
+  SMALLINT
+) TO anon, authenticated;
 
 -- comments 테이블 생성 (댓글)
 CREATE TABLE IF NOT EXISTS comments (
@@ -182,7 +295,18 @@ CREATE OR REPLACE FUNCTION public.search_posts(
   p_to TIMESTAMPTZ DEFAULT NULL,
   p_sort TEXT DEFAULT 'newest',
   p_limit INTEGER DEFAULT 12,
-  p_offset INTEGER DEFAULT 0
+  p_offset INTEGER DEFAULT 0,
+  p_tag TEXT DEFAULT NULL,
+  p_avg_min NUMERIC DEFAULT NULL,
+  p_avg_max NUMERIC DEFAULT NULL,
+  p_color_min NUMERIC DEFAULT NULL,
+  p_color_max NUMERIC DEFAULT NULL,
+  p_nose_min NUMERIC DEFAULT NULL,
+  p_nose_max NUMERIC DEFAULT NULL,
+  p_palate_min NUMERIC DEFAULT NULL,
+  p_palate_max NUMERIC DEFAULT NULL,
+  p_finish_min NUMERIC DEFAULT NULL,
+  p_finish_max NUMERIC DEFAULT NULL
 )
 RETURNS TABLE (
   id UUID,
@@ -195,7 +319,8 @@ RETURNS TABLE (
   thumbnail_url TEXT,
   tags TEXT[],
   created_at TIMESTAMPTZ,
-  view_count INTEGER
+  view_count INTEGER,
+  tasting_avg NUMERIC
 )
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -203,44 +328,59 @@ SET search_path = public
 AS $$
 DECLARE
   v_query TEXT := btrim(COALESCE(p_query, ''));
+  v_tag TEXT := NULLIF(btrim(COALESCE(p_tag, '')), '');
   v_author TEXT := NULLIF(btrim(COALESCE(p_author, '')), '');
   v_sort TEXT := lower(COALESCE(p_sort, 'newest'));
   v_limit INTEGER := LEAST(GREATEST(COALESCE(p_limit, 12), 0), 100);
   v_offset INTEGER := LEAST(GREATEST(COALESCE(p_offset, 0), 0), 10000);
 BEGIN
-  IF v_query = '' THEN
+  IF v_query = '' AND v_tag IS NULL THEN
     RETURN;
   END IF;
 
-  IF v_sort NOT IN ('newest', 'oldest', 'views') THEN
+  IF v_sort NOT IN ('newest', 'oldest', 'views', 'tasting') THEN
     v_sort := 'newest';
   END IF;
 
   RETURN QUERY
   WITH filtered AS (
     SELECT
-      posts.id,
-      posts.title,
-      posts.content,
-      posts.author_name,
-      posts.user_id,
-      posts.is_anonymous,
-      posts.whisky_id,
-      posts.thumbnail_url,
-      posts.tags,
-      posts.created_at,
-      posts.view_count
-    FROM posts
+      p.id,
+      p.title,
+      p.content,
+      p.author_name,
+      p.user_id,
+      p.is_anonymous,
+      p.whisky_id,
+      p.thumbnail_url,
+      p.tags,
+      p.created_at,
+      p.view_count,
+      (t.nose_score_x2 + t.palate_score_x2 + t.finish_score_x2) / 6.0 AS tasting_avg
+    FROM posts AS p
+    LEFT JOIN post_tasting AS t ON t.post_id = p.id
     WHERE
-      (posts.title ILIKE '%' || v_query || '%' OR posts.content ILIKE '%' || v_query || '%')
-      AND (v_author IS NULL OR posts.author_name ILIKE '%' || v_author || '%')
-      AND (p_from IS NULL OR posts.created_at >= p_from)
-      AND (p_to IS NULL OR posts.created_at <= p_to)
+      (v_query = '' OR p.title ILIKE '%' || v_query || '%' OR p.content ILIKE '%' || v_query || '%')
+      AND (v_tag IS NULL OR p.tags @> ARRAY[v_tag])
+      AND (v_author IS NULL OR p.author_name ILIKE '%' || v_author || '%')
+      AND (p_from IS NULL OR p.created_at >= p_from)
+      AND (p_to IS NULL OR p.created_at <= p_to)
+      AND (p_avg_min IS NULL OR (t.nose_score_x2 + t.palate_score_x2 + t.finish_score_x2) / 6.0 >= p_avg_min)
+      AND (p_avg_max IS NULL OR (t.nose_score_x2 + t.palate_score_x2 + t.finish_score_x2) / 6.0 <= p_avg_max)
+      AND (p_color_min IS NULL OR t.color_100 >= (p_color_min * 100))
+      AND (p_color_max IS NULL OR t.color_100 <= (p_color_max * 100))
+      AND (p_nose_min IS NULL OR t.nose_score_x2 >= (p_nose_min * 2))
+      AND (p_nose_max IS NULL OR t.nose_score_x2 <= (p_nose_max * 2))
+      AND (p_palate_min IS NULL OR t.palate_score_x2 >= (p_palate_min * 2))
+      AND (p_palate_max IS NULL OR t.palate_score_x2 <= (p_palate_max * 2))
+      AND (p_finish_min IS NULL OR t.finish_score_x2 >= (p_finish_min * 2))
+      AND (p_finish_max IS NULL OR t.finish_score_x2 <= (p_finish_max * 2))
   )
   SELECT *
   FROM filtered
   ORDER BY
     CASE WHEN v_sort = 'views' THEN filtered.view_count END DESC,
+    CASE WHEN v_sort = 'tasting' THEN filtered.tasting_avg END DESC NULLS LAST,
     CASE WHEN v_sort = 'oldest' THEN filtered.created_at END ASC,
     CASE WHEN v_sort <> 'oldest' THEN filtered.created_at END DESC
   LIMIT v_limit
@@ -255,14 +395,36 @@ GRANT EXECUTE ON FUNCTION public.search_posts(
   TIMESTAMPTZ,
   TEXT,
   INTEGER,
-  INTEGER
+  INTEGER,
+  TEXT,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC
 ) TO anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.search_posts_count(
   p_query TEXT,
   p_author TEXT DEFAULT NULL,
   p_from TIMESTAMPTZ DEFAULT NULL,
-  p_to TIMESTAMPTZ DEFAULT NULL
+  p_to TIMESTAMPTZ DEFAULT NULL,
+  p_tag TEXT DEFAULT NULL,
+  p_avg_min NUMERIC DEFAULT NULL,
+  p_avg_max NUMERIC DEFAULT NULL,
+  p_color_min NUMERIC DEFAULT NULL,
+  p_color_max NUMERIC DEFAULT NULL,
+  p_nose_min NUMERIC DEFAULT NULL,
+  p_nose_max NUMERIC DEFAULT NULL,
+  p_palate_min NUMERIC DEFAULT NULL,
+  p_palate_max NUMERIC DEFAULT NULL,
+  p_finish_min NUMERIC DEFAULT NULL,
+  p_finish_max NUMERIC DEFAULT NULL
 )
 RETURNS INTEGER
 LANGUAGE plpgsql
@@ -271,20 +433,33 @@ SET search_path = public
 AS $$
 DECLARE
   v_query TEXT := btrim(COALESCE(p_query, ''));
+  v_tag TEXT := NULLIF(btrim(COALESCE(p_tag, '')), '');
   v_author TEXT := NULLIF(btrim(COALESCE(p_author, '')), '');
   v_count INTEGER := 0;
 BEGIN
-  IF v_query = '' THEN
+  IF v_query = '' AND v_tag IS NULL THEN
     RETURN 0;
   END IF;
 
   SELECT COUNT(*) INTO v_count
-  FROM posts
+  FROM posts AS p
+  LEFT JOIN post_tasting AS t ON t.post_id = p.id
   WHERE
-    (posts.title ILIKE '%' || v_query || '%' OR posts.content ILIKE '%' || v_query || '%')
-    AND (v_author IS NULL OR posts.author_name ILIKE '%' || v_author || '%')
-    AND (p_from IS NULL OR posts.created_at >= p_from)
-    AND (p_to IS NULL OR posts.created_at <= p_to);
+    (v_query = '' OR p.title ILIKE '%' || v_query || '%' OR p.content ILIKE '%' || v_query || '%')
+    AND (v_tag IS NULL OR p.tags @> ARRAY[v_tag])
+    AND (v_author IS NULL OR p.author_name ILIKE '%' || v_author || '%')
+    AND (p_from IS NULL OR p.created_at >= p_from)
+    AND (p_to IS NULL OR p.created_at <= p_to)
+    AND (p_avg_min IS NULL OR (t.nose_score_x2 + t.palate_score_x2 + t.finish_score_x2) / 6.0 >= p_avg_min)
+    AND (p_avg_max IS NULL OR (t.nose_score_x2 + t.palate_score_x2 + t.finish_score_x2) / 6.0 <= p_avg_max)
+    AND (p_color_min IS NULL OR t.color_100 >= (p_color_min * 100))
+    AND (p_color_max IS NULL OR t.color_100 <= (p_color_max * 100))
+    AND (p_nose_min IS NULL OR t.nose_score_x2 >= (p_nose_min * 2))
+    AND (p_nose_max IS NULL OR t.nose_score_x2 <= (p_nose_max * 2))
+    AND (p_palate_min IS NULL OR t.palate_score_x2 >= (p_palate_min * 2))
+    AND (p_palate_max IS NULL OR t.palate_score_x2 <= (p_palate_max * 2))
+    AND (p_finish_min IS NULL OR t.finish_score_x2 >= (p_finish_min * 2))
+    AND (p_finish_max IS NULL OR t.finish_score_x2 <= (p_finish_max * 2));
 
   RETURN COALESCE(v_count, 0);
 END;
@@ -294,7 +469,18 @@ GRANT EXECUTE ON FUNCTION public.search_posts_count(
   TEXT,
   TEXT,
   TIMESTAMPTZ,
-  TIMESTAMPTZ
+  TIMESTAMPTZ,
+  TEXT,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC
 ) TO anon, authenticated;
 
 -- 익명 글 수정/삭제를 위한 서버 서명 기반 RPC
@@ -526,6 +712,72 @@ GRANT EXECUTE ON FUNCTION public.update_anonymous_post(
   TEXT[]
 ) TO anon, authenticated;
 
+-- 익명 글 테이스팅 수정 (서버 서명 필요)
+CREATE OR REPLACE FUNCTION public.update_anonymous_post_tasting(
+  p_post_id UUID,
+  p_signature TEXT,
+  p_color_100 SMALLINT,
+  p_nose_score_x2 SMALLINT,
+  p_palate_score_x2 SMALLINT,
+  p_finish_score_x2 SMALLINT
+)
+RETURNS public.post_tasting
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, app_private
+AS $$
+DECLARE
+  v_row public.post_tasting;
+BEGIN
+  IF NOT app_private.verify_anon_post_signature(p_post_id, 'anon_update_tasting', p_signature) THEN
+    RAISE EXCEPTION 'invalid anon post signature (anon_update_tasting)';
+  END IF;
+
+  PERFORM 1
+  FROM posts AS p
+  WHERE p.id = p_post_id
+    AND p.is_anonymous = true
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'anonymous post not found or not anonymous';
+  END IF;
+
+  INSERT INTO public.post_tasting (
+    post_id,
+    color_100,
+    nose_score_x2,
+    palate_score_x2,
+    finish_score_x2
+  )
+  VALUES (
+    p_post_id,
+    p_color_100,
+    p_nose_score_x2,
+    p_palate_score_x2,
+    p_finish_score_x2
+  )
+  ON CONFLICT (post_id) DO UPDATE
+  SET
+    color_100 = EXCLUDED.color_100,
+    nose_score_x2 = EXCLUDED.nose_score_x2,
+    palate_score_x2 = EXCLUDED.palate_score_x2,
+    finish_score_x2 = EXCLUDED.finish_score_x2
+  RETURNING * INTO v_row;
+
+  RETURN v_row;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.update_anonymous_post_tasting(
+  UUID,
+  TEXT,
+  SMALLINT,
+  SMALLINT,
+  SMALLINT,
+  SMALLINT
+) TO anon, authenticated;
+
 -- 익명 글 삭제 (서버 서명 필요, 비밀번호 검증은 서버에서 수행)
 CREATE OR REPLACE FUNCTION public.delete_anonymous_post(
   p_post_id UUID,
@@ -599,6 +851,7 @@ GRANT EXECUTE ON FUNCTION public.convert_anonymous_posts(UUID, UUID, TEXT) TO an
 
 -- 1. RLS 활성화
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE post_tasting ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
@@ -654,6 +907,64 @@ USING (
 
 -- 비밀번호 해시 컬럼은 API에서 직접 조회 불가하도록 차단
 REVOKE SELECT (edit_password_hash) ON posts FROM anon, authenticated;
+
+-- 2-1. post_tasting 테이블 정책
+-- 읽기: 모든 사용자 (익명 포함) 읽기 가능
+DROP POLICY IF EXISTS "Anyone can read post_tasting" ON post_tasting;
+CREATE POLICY "Anyone can read post_tasting"
+ON post_tasting FOR SELECT
+USING (true);
+
+-- 작성: 인증된 사용자(익명 포함)만 작성 가능
+DROP POLICY IF EXISTS "Authenticated users can insert own post_tasting" ON post_tasting;
+CREATE POLICY "Authenticated users can insert own post_tasting"
+ON post_tasting FOR INSERT
+WITH CHECK (
+  auth.role() = 'authenticated'
+  AND EXISTS (
+    SELECT 1
+    FROM posts AS p
+    WHERE p.id = post_tasting.post_id
+      AND p.user_id = auth.uid()
+  )
+);
+
+-- 수정: 로그인 글(비익명) 작성자만 허용
+DROP POLICY IF EXISTS "Users can update own non-anonymous post_tasting" ON post_tasting;
+CREATE POLICY "Users can update own non-anonymous post_tasting"
+ON post_tasting FOR UPDATE
+USING (
+  EXISTS (
+    SELECT 1
+    FROM posts AS p
+    WHERE p.id = post_tasting.post_id
+      AND p.user_id = auth.uid()
+      AND p.is_anonymous = false
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM posts AS p
+    WHERE p.id = post_tasting.post_id
+      AND p.user_id = auth.uid()
+      AND p.is_anonymous = false
+  )
+);
+
+-- 삭제: 로그인 글(비익명) 작성자만 허용
+DROP POLICY IF EXISTS "Users can delete own non-anonymous post_tasting" ON post_tasting;
+CREATE POLICY "Users can delete own non-anonymous post_tasting"
+ON post_tasting FOR DELETE
+USING (
+  EXISTS (
+    SELECT 1
+    FROM posts AS p
+    WHERE p.id = post_tasting.post_id
+      AND p.user_id = auth.uid()
+      AND p.is_anonymous = false
+  )
+);
 
 -- 3. comments 테이블 정책
 -- 읽기: 모든 사용자 읽기 가능

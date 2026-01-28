@@ -3,7 +3,7 @@ import { createPost } from '$lib/server/supabase/queries/posts';
 import { listWhiskies } from '$lib/server/supabase/queries/whiskies';
 import { getUser, getUserOrCreateAnonymous, getSession } from '$lib/server/supabase/auth';
 import { convertBlobUrlsToStorageUrls, convertBlobUrlsToStorageUrlsWithMap } from '$lib/server/supabase/queries/images.js';
-import { parseTags, validatePostInput } from '$lib/server/validation/posts';
+import { parseTags, validatePostInput, validateTastingInput } from '$lib/server/validation/posts';
 
 export const actions = {
   create: async ({ request, cookies }) => {
@@ -15,6 +15,10 @@ export const actions = {
     let tags = '';
     let whiskyId = '';
     let thumbnailUrl = '';
+    let color = '0.5';
+    let nose = '0';
+    let palate = '0';
+    let finish = '0';
     try {
       const formData = await request.formData();
       title = formData.get('title')?.toString() ?? '';
@@ -23,6 +27,10 @@ export const actions = {
       tags = formData.get('tags')?.toString() ?? '';
       whiskyId = formData.get('whiskyId')?.toString() ?? '';
       thumbnailUrl = formData.get('thumbnailUrl')?.toString() ?? '';
+      color = formData.get('color')?.toString() ?? '0.5';
+      nose = formData.get('nose')?.toString() ?? '0';
+      palate = formData.get('palate')?.toString() ?? '0';
+      finish = formData.get('finish')?.toString() ?? '0';
       editPassword = formData.get('editPassword')?.toString() ?? '';
       editPasswordConfirm = formData.get('editPasswordConfirm')?.toString() ?? '';
 
@@ -30,7 +38,7 @@ export const actions = {
       const user = await getUserOrCreateAnonymous(cookies);
       const isLoggedIn = !user.isAnonymous && !!user.email;
 
-      const { fieldErrors, hasErrors } = validatePostInput(
+      const { fieldErrors, hasErrors: baseHasErrors } = validatePostInput(
         { title, content },
         {
           isLoggedIn,
@@ -40,6 +48,27 @@ export const actions = {
           requirePasswordConfirm: true
         }
       );
+
+      if (!whiskyId) {
+        fieldErrors.whiskyId = '위스키를 선택해주세요.';
+      }
+
+      const colorValue = Number(color);
+      const noseValue = Number(nose);
+      const palateValue = Number(palate);
+      const finishValue = Number(finish);
+      const tastingValidation = validateTastingInput({
+        color: colorValue,
+        nose: noseValue,
+        palate: palateValue,
+        finish: finishValue
+      });
+
+      if (tastingValidation.hasErrors) {
+        Object.assign(fieldErrors, tastingValidation.fieldErrors);
+      }
+
+      const hasErrors = baseHasErrors || Object.keys(fieldErrors).length > 0;
 
       if (hasErrors) {
         return fail(400, {
@@ -51,7 +80,11 @@ export const actions = {
             author: author || '',
             tags: tags || '',
             whiskyId: whiskyId || '',
-            thumbnailUrl: thumbnailUrl || ''
+            thumbnailUrl: thumbnailUrl || '',
+            color,
+            nose,
+            palate,
+            finish
           }
         });
       }
@@ -102,7 +135,13 @@ export const actions = {
           user_id: user.id, // 익명 사용자도 익명 세션의 user_id를 저장
           whisky_id: whiskyId || null,
           thumbnail_url: thumbnailUrl || null,
-          tags: parseTags(tags)
+          tags: parseTags(tags),
+          tasting: {
+            color_100: Math.max(0, Math.min(100, Math.round(colorValue * 100))),
+            nose_score_x2: Math.max(0, Math.min(10, Math.round(noseValue * 2))),
+            palate_score_x2: Math.max(0, Math.min(10, Math.round(palateValue * 2))),
+            finish_score_x2: Math.max(0, Math.min(10, Math.round(finishValue * 2)))
+          }
         },
         accessToken
       );
@@ -168,15 +207,19 @@ export const actions = {
             return fail(500, {
               error: '이미지 업로드 중 오류가 발생했습니다.',
               fieldErrors: {},
-            values: {
-              title: title || '',
-              content: content || '',
-              author: author || '',
-              tags: tags || '',
-              whiskyId: whiskyId || '',
-              thumbnailUrl: thumbnailUrl || ''
-            }
-          });
+              values: {
+                title: title || '',
+                content: content || '',
+                author: author || '',
+                tags: tags || '',
+                whiskyId: whiskyId || '',
+                thumbnailUrl: thumbnailUrl || '',
+                color,
+                nose,
+                palate,
+                finish
+              }
+            });
         }
         }
       } else {
@@ -204,7 +247,11 @@ export const actions = {
           author: author || '',
           tags: tags || '',
           whiskyId: whiskyId || '',
-          thumbnailUrl: thumbnailUrl || ''
+          thumbnailUrl: thumbnailUrl || '',
+          color,
+          nose,
+          palate,
+          finish
         }
       });
     }

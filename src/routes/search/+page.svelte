@@ -3,6 +3,7 @@
   import Pagination from '$lib/components/Pagination.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { page, navigating } from '$app/stores';
+  import { resolve } from '$app/paths';
 
   let { data } = $props();
 
@@ -11,6 +12,7 @@
     url.searchParams.set('page', p.toString());
     return url.pathname + url.search;
   }
+
 </script>
 
 <svelte:head>
@@ -67,6 +69,7 @@
         <option value="newest">최신순</option>
         <option value="oldest">오래된순</option>
         <option value="views">조회수순</option>
+        <option value="tasting">테이스팅 평균 높은순</option>
       </select>
     </div>
     <div>
@@ -89,9 +92,149 @@
         class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
       />
     </div>
+    <div>
+      <label for="avgMin" class="block text-sm font-medium text-gray-700 mb-2">테이스팅 평균 최소</label>
+      <input
+        id="avgMin"
+        name="avgMin"
+        type="number"
+        step="0.5"
+        min="0"
+        max="5"
+        value={data.filters?.avgMin ?? ''}
+        placeholder="0.0"
+        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+      />
+    </div>
+    <div>
+      <label for="avgMax" class="block text-sm font-medium text-gray-700 mb-2">테이스팅 평균 최대</label>
+      <input
+        id="avgMax"
+        name="avgMax"
+        type="number"
+        step="0.5"
+        min="0"
+        max="5"
+        value={data.filters?.avgMax ?? ''}
+        placeholder="5.0"
+        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+      />
+    </div>
+    <div>
+      <label for="colorMin" class="block text-sm font-medium text-gray-700 mb-2">Color 최소</label>
+      <input
+        id="colorMin"
+        name="colorMin"
+        type="number"
+        step="0.01"
+        min="0"
+        max="1"
+        value={data.filters?.colorMin ?? ''}
+        placeholder="0.00"
+        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+      />
+    </div>
+    <div>
+      <label for="colorMax" class="block text-sm font-medium text-gray-700 mb-2">Color 최대</label>
+      <input
+        id="colorMax"
+        name="colorMax"
+        type="number"
+        step="0.01"
+        min="0"
+        max="1"
+        value={data.filters?.colorMax ?? ''}
+        placeholder="1.00"
+        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+      />
+    </div>
+    <div>
+      <label for="noseMin" class="block text-sm font-medium text-gray-700 mb-2">Nose 최소</label>
+      <input
+        id="noseMin"
+        name="noseMin"
+        type="number"
+        step="0.5"
+        min="0"
+        max="5"
+        value={data.filters?.noseMin ?? ''}
+        placeholder="0.0"
+        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+      />
+    </div>
+    <div>
+      <label for="noseMax" class="block text-sm font-medium text-gray-700 mb-2">Nose 최대</label>
+      <input
+        id="noseMax"
+        name="noseMax"
+        type="number"
+        step="0.5"
+        min="0"
+        max="5"
+        value={data.filters?.noseMax ?? ''}
+        placeholder="5.0"
+        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+      />
+    </div>
+    <div>
+      <label for="palateMin" class="block text-sm font-medium text-gray-700 mb-2">Palate 최소</label>
+      <input
+        id="palateMin"
+        name="palateMin"
+        type="number"
+        step="0.5"
+        min="0"
+        max="5"
+        value={data.filters?.palateMin ?? ''}
+        placeholder="0.0"
+        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+      />
+    </div>
+    <div>
+      <label for="palateMax" class="block text-sm font-medium text-gray-700 mb-2">Palate 최대</label>
+      <input
+        id="palateMax"
+        name="palateMax"
+        type="number"
+        step="0.5"
+        min="0"
+        max="5"
+        value={data.filters?.palateMax ?? ''}
+        placeholder="5.0"
+        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+      />
+    </div>
+    <div>
+      <label for="finishMin" class="block text-sm font-medium text-gray-700 mb-2">Finish 최소</label>
+      <input
+        id="finishMin"
+        name="finishMin"
+        type="number"
+        step="0.5"
+        min="0"
+        max="5"
+        value={data.filters?.finishMin ?? ''}
+        placeholder="0.0"
+        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+      />
+    </div>
+    <div>
+      <label for="finishMax" class="block text-sm font-medium text-gray-700 mb-2">Finish 최대</label>
+      <input
+        id="finishMax"
+        name="finishMax"
+        type="number"
+        step="0.5"
+        min="0"
+        max="5"
+        value={data.filters?.finishMax ?? ''}
+        placeholder="5.0"
+        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+      />
+    </div>
     <div class="sm:col-span-2 lg:col-span-4 flex flex-col sm:flex-row gap-3 sm:justify-end pt-2">
       <a
-        href="/search"
+        href={resolve('/search')}
         class="inline-flex items-center justify-center rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
       >
         필터 초기화
@@ -108,13 +251,13 @@
   {#if $navigating}
     <!-- 네비게이션 중 스켈레톤 표시 -->
     <div class="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
-      {#each Array(6) as _}
+      {#each Array(6) as _, index (index)}
         <Skeleton />
       {/each}
     </div>
   {:else if data.q?.trim() && data.posts && data.posts.length > 0}
     <div class="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
-      {#each data.posts as post}
+      {#each data.posts as post (post.id)}
         <PostCard {post} />
       {/each}
     </div>
@@ -129,7 +272,7 @@
   {:else if data.q?.trim()}
     <div class="rounded-2xl bg-white/60 backdrop-blur-sm p-12 text-center ring-1 ring-black/5 shadow-sm">
       <p class="text-lg text-gray-700 mb-6">검색 결과가 없습니다.</p>
-      <a href="/posts" class="inline-flex items-center gap-2 px-6 py-3 bg-whiskey-600 text-white rounded-lg hover:bg-whiskey-700 transition-colors font-medium shadow-sm hover:shadow-md">
+      <a href={resolve('/posts')} class="inline-flex items-center gap-2 px-6 py-3 bg-whiskey-600 text-white rounded-lg hover:bg-whiskey-700 transition-colors font-medium shadow-sm hover:shadow-md">
         전체 게시글 보기
       </a>
     </div>

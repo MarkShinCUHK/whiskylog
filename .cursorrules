@@ -234,9 +234,11 @@ src/
      ```
    - ✅ **구현 완료**:
      - 검색바 컴포넌트: Header에 통합 (데스크톱/모바일 반응형)
-     - 검색 쿼리 함수: `searchPosts(query, { limit, offset })` - Supabase `ilike` 사용
+     - 검색 쿼리 함수: `searchPosts(query, { limit, offset })` - RPC 기반 검색
      - 검색 결과 페이지: 쿼리 파라미터 `q` 읽기, 결과 목록 표시, 페이지네이션 지원
      - 검색 개수 조회: `getSearchPostCount(query)` 함수 추가
+     - 테이스팅 필터: 평균/Color/Nose/Palate/Finish 범위 필터 지원
+     - 정렬 옵션: 테이스팅 평균 높은순 추가
 
 2. ✅ **페이지네이션** (12개/페이지)
    - ✅ **구현 완료**:
@@ -492,8 +494,6 @@ src/
 - **보안**: ANON_KEY는 RLS로 제어되므로 안전하지만, Service Role Key는 절대 사용하지 않음
 - **세션 토큰**: RLS 정책 적용을 위해 `createSupabaseClientWithSession()` 함수 사용 (SessionTokens 객체 전달)
 - **OAuth 로그인**: `signInWithOAuth` → `/auth/callback`에서 `exchangeCodeForSession`로 세션 교환 후 쿠키 설정
-- **OAuth PKCE (SSR 필수)**: `@supabase/ssr`의 `createServerClient`를 사용해 code verifier를 쿠키에 저장/복원
-- **OAuth redirectTo**: 허용 목록과 정확히 일치해야 하므로 쿼리 파라미터를 붙이지 않음 (필요 시 next는 쿠키로 전달)
 - **Supabase Storage** (이미지 업로드):
   - ✅ Storage 버킷: `post-images` (공개 버킷)
   - ✅ RLS 정책: 읽기(모든 사용자), 쓰기(인증된 사용자), 삭제(업로드한 사용자)
@@ -545,4 +545,4 @@ src/
 
 ## 추가 참조
 - 상세 가이드라인: `web-dev-guidelines.md` 참조
-- 마지막 업데이트: 2026-01-26 (검색 필터, 알림, 대표 이미지 선택)
+- 마지막 업데이트: 2026-01-28 (테이스팅 필터/정렬 추가)

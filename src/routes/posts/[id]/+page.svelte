@@ -1,11 +1,14 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
+  import { resolve } from '$app/paths';
   import { tick } from 'svelte';
   import LikeButton from '$lib/components/LikeButton.svelte';
   import BookmarkButton from '$lib/components/BookmarkButton.svelte';
   import CommentList from '$lib/components/CommentList.svelte';
   import CommentForm from '$lib/components/CommentForm.svelte';
+  import StarRating from '$lib/components/StarRating.svelte';
+  import ColorSlider from '$lib/components/ColorSlider.svelte';
   import { showToast } from '$lib/stores/toast';
   import type { Comment } from '$lib/server/supabase/types';
   
@@ -122,9 +125,9 @@
           {/if}
           {#if data.post.tags && data.post.tags.length > 0}
             <div class="flex flex-wrap gap-2">
-              {#each data.post.tags as tag}
+              {#each data.post.tags as tag (tag)}
                 <a
-                  href={`/posts?tag=${encodeURIComponent(tag)}`}
+                  href={resolve(`/posts?tag=${encodeURIComponent(tag)}`)}
                   class="inline-flex items-center rounded-full bg-whiskey-50 px-3 py-1 text-xs font-semibold text-whiskey-700 ring-1 ring-whiskey-100"
                 >
                   #{tag}
@@ -149,6 +152,25 @@
         </div>
       </div>
     </header>
+
+    {#if data.tasting}
+      <section class="mb-10 rounded-2xl border border-gray-200 bg-white/80 p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-900">테이스팅</h2>
+          <span class="text-sm text-gray-600">
+            평균 {((data.tasting.nose + data.tasting.palate + data.tasting.finish) / 3.0).toFixed(1)}
+          </span>
+        </div>
+        <div class="space-y-5">
+          <ColorSlider value={data.tasting.color} label="Color" disabled />
+          <div class="grid gap-4 sm:grid-cols-3">
+            <StarRating value={data.tasting.nose} label="Nose" disabled />
+            <StarRating value={data.tasting.palate} label="Palate" disabled />
+            <StarRating value={data.tasting.finish} label="Finish" disabled />
+          </div>
+        </div>
+      </section>
+    {/if}
 
     <!-- 본문 -->
     <div class="mb-12">
@@ -202,14 +224,14 @@
     <!-- 하단 버튼 -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center pt-6 border-t border-gray-200">
       <a 
-        href="/posts" 
+        href={resolve('/posts')} 
         class="inline-flex items-center justify-center px-6 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium ring-1 ring-black/10 shadow-sm hover:shadow"
       >
         목록으로
       </a>
       {#if data.canEditDelete}
         <a
-          href="/posts/{data.post.id}/edit"
+          href={resolve(`/posts/${data.post.id}/edit`)}
           class="inline-flex items-center justify-center px-6 py-3 bg-whiskey-600 text-white rounded-lg hover:bg-whiskey-700 transition-colors font-medium shadow-sm hover:shadow-md"
         >
           수정하기
@@ -268,7 +290,7 @@
       <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">게시글을 찾을 수 없습니다</h1>
       <p class="text-gray-600 mb-8">요청하신 게시글이 존재하지 않습니다.</p>
       <a 
-        href="/posts" 
+        href={resolve('/posts')} 
         class="inline-flex items-center justify-center px-6 py-3 bg-whiskey-600 text-white rounded-lg hover:bg-whiskey-700 transition-colors font-medium shadow-sm hover:shadow-md"
       >
         목록으로 돌아가기

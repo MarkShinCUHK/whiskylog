@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Post } from '$lib/server/supabase/types';
+  import { resolve } from '$app/paths';
 
   let { post }: { post: Post } = $props();
 
@@ -70,7 +71,7 @@
 </script>
 
 <article class="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg">
-  <a href="/posts/{post.id}" class="block">
+  <a href={resolve(`/posts/${post.id}`)} class="block">
     <!-- 썸네일 (첫 번째 이미지 또는 그라데이션) -->
     <div class="relative aspect-[16/10] w-full overflow-hidden {thumbnailUrl ? 'bg-gray-100' : `bg-gradient-to-br ${gradientClass}`}">
       {#if thumbnailUrl}
@@ -133,6 +134,11 @@
         </div>
 
         <div class="flex items-center gap-3">
+          {#if post.tastingAvg !== undefined}
+            <span class="inline-flex items-center gap-1">
+              <span class="text-gray-400">테이스팅</span> {post.tastingAvg.toFixed(1)}
+            </span>
+          {/if}
           {#if post.views !== undefined}
             <span class="inline-flex items-center gap-1">
               <span class="text-gray-400">조회</span> {post.views}

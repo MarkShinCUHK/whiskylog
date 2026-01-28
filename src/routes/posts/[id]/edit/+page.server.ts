@@ -2,10 +2,11 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getPostById, updatePost } from '$lib/server/supabase/queries/posts';
 import { listWhiskies } from '$lib/server/supabase/queries/whiskies';
+import { getPostTasting } from '$lib/server/supabase/queries/tasting';
 import { getUser, getSession, getUserOrCreateAnonymous } from '$lib/server/supabase/auth';
 import { convertBlobUrlsToStorageUrlsWithMap } from '$lib/server/supabase/queries/images.js';
 import { deleteImage } from '$lib/server/supabase/queries/storage.js';
-import { parseTags, validatePostInput } from '$lib/server/validation/posts';
+import { parseTags, validatePostInput, validateTastingInput } from '$lib/server/validation/posts';
 
 export const load: PageServerLoad = async ({ params, cookies }) => {
   try {
@@ -41,10 +42,14 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
       }
     }
 
-    const whiskies = await listWhiskies(200);
+    const [whiskies, tasting] = await Promise.all([
+      listWhiskies(200),
+      getPostTasting(postId)
+    ]);
     return {
       post,
-      whiskies
+      whiskies,
+      tasting
     };
   } catch (err) {
     // SvelteKit error는 그대로 전달
@@ -85,6 +90,10 @@ export const actions: Actions = {
       const tags = formData.get('tags')?.toString() ?? '';
       const whiskyId = formData.get('whiskyId')?.toString() ?? '';
       let thumbnailUrl = formData.get('thumbnailUrl')?.toString() ?? '';
+      const color = formData.get('color')?.toString() ?? '0.5';
+      const nose = formData.get('nose')?.toString() ?? '0';
+      const palate = formData.get('palate')?.toString() ?? '0';
+      const finish = formData.get('finish')?.toString() ?? '0';
       
       const user = await getUser(cookies);
       const isOwner = !!user && !!post.userId && user.id === post.userId;
@@ -110,6 +119,25 @@ export const actions: Actions = {
         }
       );
 
+      if (!whiskyId) {
+        fieldErrors.whiskyId = '위스키를 선택해주세요.';
+      }
+
+      const colorValue = Number(color);
+      const noseValue = Number(nose);
+      const palateValue = Number(palate);
+      const finishValue = Number(finish);
+      const tastingValidation = validateTastingInput({
+        color: colorValue,
+        nose: noseValue,
+        palate: palateValue,
+        finish: finishValue
+      });
+
+      if (tastingValidation.hasErrors) {
+        Object.assign(fieldErrors, tastingValidation.fieldErrors);
+      }
+
       if (isAnonymousPost && (!editPassword || editPassword.length < 4)) {
         fieldErrors.editPassword = '비밀번호를 입력해주세요.';
       }
@@ -126,7 +154,11 @@ export const actions: Actions = {
             author: author || '',
             tags: tags || '',
             whiskyId: whiskyId || '',
-            thumbnailUrl: thumbnailUrl || ''
+            thumbnailUrl: thumbnailUrl || '',
+            color,
+            nose,
+            palate,
+            finish
           }
         });
       }
@@ -268,7 +300,13 @@ export const actions: Actions = {
           author_name: isAnonymousPost ? (author || undefined) : (user?.nickname || user?.email || undefined),
           tags: parseTags(tags),
           whisky_id: whiskyId || null,
-          thumbnail_url: thumbnailUrl || null
+          thumbnail_url: thumbnailUrl || null,
+          tasting: {
+            color_100: Math.max(0, Math.min(100, Math.round(colorValue * 100))),
+            nose_score_x2: Math.max(0, Math.min(10, Math.round(noseValue * 2))),
+            palate_score_x2: Math.max(0, Math.min(10, Math.round(palateValue * 2))),
+            finish_score_x2: Math.max(0, Math.min(10, Math.round(finishValue * 2)))
+          }
         },
         {
           userId: isAnonymousPost ? null : (user?.id ?? null), // 익명 글은 항상 null
