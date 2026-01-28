@@ -479,6 +479,7 @@ src/
 - **쿼리 계층**: `src/lib/server/supabase/queries/posts.ts`가 DB 접근의 단일 창구
 - **보안**: ANON_KEY는 RLS로 제어되므로 안전하지만, Service Role Key는 절대 사용하지 않음
 - **세션 토큰**: RLS 정책 적용을 위해 `createSupabaseClientWithSession()` 함수 사용 (SessionTokens 객체 전달)
+- **OAuth 로그인**: `signInWithOAuth` → `/auth/callback`에서 `exchangeCodeForSession`로 세션 교환 후 쿠키 설정
 - **Supabase Storage** (이미지 업로드):
   - ✅ Storage 버킷: `post-images` (공개 버킷)
   - ✅ RLS 정책: 읽기(모든 사용자), 쓰기(인증된 사용자), 삭제(업로드한 사용자)

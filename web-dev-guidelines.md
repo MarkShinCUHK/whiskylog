@@ -882,6 +882,15 @@ Tailwind 기본 간격 사용:
    - `supabase-schema.sql` 파일의 내용 실행 (또는 직접 SQL 작성)
    - 테이블 생성 및 인덱스 생성 확인
 
+4. **Google OAuth 로그인 (선택)**
+   - Supabase Dashboard → Authentication → Providers에서 Google 활성화
+   - Google Cloud Console에서 OAuth 클라이언트 생성
+   - Authorized redirect URI에 Supabase 콜백 추가
+     - `https://<프로젝트-ref>.supabase.co/auth/v1/callback`
+   - Supabase Auth Redirect URLs에 앱 콜백 등록
+     - `http://localhost:5173/auth/callback`
+     - `https://<프로덕션-도메인>/auth/callback`
+
 ### Supabase 클라이언트 사용
 
 #### 서버 전용 클라이언트 및 쿼리 계층

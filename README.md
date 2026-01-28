@@ -85,6 +85,13 @@ set value = '<ANON_POST_SECRET과 동일한 값>',
 where key = 'anon_post_secret';
 ```
 
+8. (선택) Google OAuth 로그인
+   - Supabase Auth Providers에서 Google 활성화
+   - Google Cloud에서 OAuth 클라이언트 생성 후 Redirect URI에 Supabase 콜백 추가
+   - Supabase Auth Redirect URLs에 앱 콜백 등록
+     - `http://localhost:5173/auth/callback`
+     - `https://<프로덕션-도메인>/auth/callback`
+
 ### 빌드
 
 ```bash

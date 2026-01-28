@@ -1,8 +1,33 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { createSupabaseClient } from '$lib/server/supabase/client';
+import { createSupabaseClient, createSupabaseAuthClient } from '$lib/server/supabase/client';
 import { setSessionCookies } from '$lib/server/supabase/auth';
 
 export const actions = {
+  google: async ({ url, cookies }) => {
+    try {
+      const supabase = createSupabaseAuthClient(cookies);
+      const next = url.searchParams.get('next') || '/my-posts';
+      const safeNext = next.startsWith('/') ? next : '/my-posts';
+      const redirectTo = `${url.origin}/auth/callback?next=${encodeURIComponent(safeNext)}`;
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo }
+      });
+
+      if (error || !data?.url) {
+        return fail(400, {
+          error: error?.message || '구글 로그인에 실패했습니다.'
+        });
+      }
+
+      throw redirect(303, data.url);
+    } catch (error) {
+      return fail(400, {
+        error: error instanceof Error ? error.message : '구글 로그인에 실패했습니다.'
+      });
+    }
+  },
   default: async ({ request, cookies }) => {
     const formData = await request.formData();
     const email = formData.get('email')?.toString().trim();
@@ -51,4 +76,3 @@ export const actions = {
     throw redirect(303, '/my-posts');
   }
 };
-
