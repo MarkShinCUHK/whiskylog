@@ -127,7 +127,7 @@
             <div class="flex flex-wrap gap-2">
               {#each data.post.tags as tag (tag)}
                 <a
-                  href={resolve(`/posts?tag=${encodeURIComponent(tag)}`)}
+                  href={`${resolve('/posts')}?tag=${encodeURIComponent(tag)}`}
                   class="inline-flex items-center rounded-full bg-whiskey-50 px-3 py-1 text-xs font-semibold text-whiskey-700 ring-1 ring-whiskey-100"
                 >
                   #{tag}
