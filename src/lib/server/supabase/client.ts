@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import type { Cookies } from '@sveltejs/kit';
 
@@ -56,19 +55,35 @@ export function createSupabaseClientForSession(sessionTokens?: { accessToken: st
  * - code_verifier를 쿠키에 저장해 콜백에서 교환 가능하게 함
  */
 export function createSupabaseAuthClient(cookies: Cookies) {
-  return createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
-    cookies: {
-      getAll() {
-        return cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          cookies.set(name, value, {
-            path: '/',
-            ...options,
-            secure: options?.secure ?? process.env.NODE_ENV === 'production'
-          });
-        });
+  const secure = process.env.NODE_ENV === 'production';
+  const pkceCookieOptions = {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure,
+    maxAge: 60 * 10 // 10분, PKCE code_verifier 보관용
+  };
+
+  const isPkceKey = (key: string) => key.endsWith('-code-verifier');
+
+  return createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+    auth: {
+      flowType: 'pkce',
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: true,
+      storage: {
+        async getItem(key) {
+          return isPkceKey(key) ? cookies.get(key) ?? null : null;
+        },
+        async setItem(key, value) {
+          if (!isPkceKey(key)) return;
+          cookies.set(key, value, pkceCookieOptions);
+        },
+        async removeItem(key) {
+          if (!isPkceKey(key)) return;
+          cookies.delete(key, { path: '/' });
+        }
       }
     }
   });

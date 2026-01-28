@@ -93,144 +93,154 @@
       />
     </div>
     <div>
-      <label for="avgMin" class="block text-sm font-medium text-gray-700 mb-2">테이스팅 평균 최소</label>
-      <input
-        id="avgMin"
-        name="avgMin"
-        type="number"
-        step="0.5"
-        min="0"
-        max="5"
-        value={data.filters?.avgMin ?? ''}
-        placeholder="0.0"
-        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
-      />
+      <label for="avgMin" class="block text-sm font-medium text-gray-700 mb-2">테이스팅 평균</label>
+      <div class="flex items-center gap-2">
+        <input
+          id="avgMin"
+          name="avgMin"
+          type="number"
+          step="0.5"
+          min="0"
+          max="5"
+          value={data.filters?.avgMin ?? ''}
+          placeholder="0.0"
+          aria-label="테이스팅 평균 최소"
+          class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+        />
+        <span class="text-sm text-gray-500">~</span>
+        <input
+          id="avgMax"
+          name="avgMax"
+          type="number"
+          step="0.5"
+          min="0"
+          max="5"
+          value={data.filters?.avgMax ?? ''}
+          placeholder="5.0"
+          aria-label="테이스팅 평균 최대"
+          class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+        />
+      </div>
     </div>
     <div>
-      <label for="avgMax" class="block text-sm font-medium text-gray-700 mb-2">테이스팅 평균 최대</label>
-      <input
-        id="avgMax"
-        name="avgMax"
-        type="number"
-        step="0.5"
-        min="0"
-        max="5"
-        value={data.filters?.avgMax ?? ''}
-        placeholder="5.0"
-        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
-      />
+      <label for="colorMin" class="block text-sm font-medium text-gray-700 mb-2">Color</label>
+      <div class="flex items-center gap-2">
+        <input
+          id="colorMin"
+          name="colorMin"
+          type="number"
+          step="0.01"
+          min="0"
+          max="1"
+          value={data.filters?.colorMin ?? ''}
+          placeholder="0.00"
+          aria-label="Color 최소"
+          class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+        />
+        <span class="text-sm text-gray-500">~</span>
+        <input
+          id="colorMax"
+          name="colorMax"
+          type="number"
+          step="0.01"
+          min="0"
+          max="1"
+          value={data.filters?.colorMax ?? ''}
+          placeholder="1.00"
+          aria-label="Color 최대"
+          class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+        />
+      </div>
     </div>
     <div>
-      <label for="colorMin" class="block text-sm font-medium text-gray-700 mb-2">Color 최소</label>
-      <input
-        id="colorMin"
-        name="colorMin"
-        type="number"
-        step="0.01"
-        min="0"
-        max="1"
-        value={data.filters?.colorMin ?? ''}
-        placeholder="0.00"
-        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
-      />
+      <label for="noseMin" class="block text-sm font-medium text-gray-700 mb-2">Nose</label>
+      <div class="flex items-center gap-2">
+        <input
+          id="noseMin"
+          name="noseMin"
+          type="number"
+          step="0.5"
+          min="0"
+          max="5"
+          value={data.filters?.noseMin ?? ''}
+          placeholder="0.0"
+          aria-label="Nose 최소"
+          class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+        />
+        <span class="text-sm text-gray-500">~</span>
+        <input
+          id="noseMax"
+          name="noseMax"
+          type="number"
+          step="0.5"
+          min="0"
+          max="5"
+          value={data.filters?.noseMax ?? ''}
+          placeholder="5.0"
+          aria-label="Nose 최대"
+          class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+        />
+      </div>
     </div>
     <div>
-      <label for="colorMax" class="block text-sm font-medium text-gray-700 mb-2">Color 최대</label>
-      <input
-        id="colorMax"
-        name="colorMax"
-        type="number"
-        step="0.01"
-        min="0"
-        max="1"
-        value={data.filters?.colorMax ?? ''}
-        placeholder="1.00"
-        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
-      />
+      <label for="palateMin" class="block text-sm font-medium text-gray-700 mb-2">Palate</label>
+      <div class="flex items-center gap-2">
+        <input
+          id="palateMin"
+          name="palateMin"
+          type="number"
+          step="0.5"
+          min="0"
+          max="5"
+          value={data.filters?.palateMin ?? ''}
+          placeholder="0.0"
+          aria-label="Palate 최소"
+          class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+        />
+        <span class="text-sm text-gray-500">~</span>
+        <input
+          id="palateMax"
+          name="palateMax"
+          type="number"
+          step="0.5"
+          min="0"
+          max="5"
+          value={data.filters?.palateMax ?? ''}
+          placeholder="5.0"
+          aria-label="Palate 최대"
+          class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+        />
+      </div>
     </div>
     <div>
-      <label for="noseMin" class="block text-sm font-medium text-gray-700 mb-2">Nose 최소</label>
-      <input
-        id="noseMin"
-        name="noseMin"
-        type="number"
-        step="0.5"
-        min="0"
-        max="5"
-        value={data.filters?.noseMin ?? ''}
-        placeholder="0.0"
-        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
-      />
-    </div>
-    <div>
-      <label for="noseMax" class="block text-sm font-medium text-gray-700 mb-2">Nose 최대</label>
-      <input
-        id="noseMax"
-        name="noseMax"
-        type="number"
-        step="0.5"
-        min="0"
-        max="5"
-        value={data.filters?.noseMax ?? ''}
-        placeholder="5.0"
-        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
-      />
-    </div>
-    <div>
-      <label for="palateMin" class="block text-sm font-medium text-gray-700 mb-2">Palate 최소</label>
-      <input
-        id="palateMin"
-        name="palateMin"
-        type="number"
-        step="0.5"
-        min="0"
-        max="5"
-        value={data.filters?.palateMin ?? ''}
-        placeholder="0.0"
-        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
-      />
-    </div>
-    <div>
-      <label for="palateMax" class="block text-sm font-medium text-gray-700 mb-2">Palate 최대</label>
-      <input
-        id="palateMax"
-        name="palateMax"
-        type="number"
-        step="0.5"
-        min="0"
-        max="5"
-        value={data.filters?.palateMax ?? ''}
-        placeholder="5.0"
-        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
-      />
-    </div>
-    <div>
-      <label for="finishMin" class="block text-sm font-medium text-gray-700 mb-2">Finish 최소</label>
-      <input
-        id="finishMin"
-        name="finishMin"
-        type="number"
-        step="0.5"
-        min="0"
-        max="5"
-        value={data.filters?.finishMin ?? ''}
-        placeholder="0.0"
-        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
-      />
-    </div>
-    <div>
-      <label for="finishMax" class="block text-sm font-medium text-gray-700 mb-2">Finish 최대</label>
-      <input
-        id="finishMax"
-        name="finishMax"
-        type="number"
-        step="0.5"
-        min="0"
-        max="5"
-        value={data.filters?.finishMax ?? ''}
-        placeholder="5.0"
-        class="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
-      />
+      <label for="finishMin" class="block text-sm font-medium text-gray-700 mb-2">Finish</label>
+      <div class="flex items-center gap-2">
+        <input
+          id="finishMin"
+          name="finishMin"
+          type="number"
+          step="0.5"
+          min="0"
+          max="5"
+          value={data.filters?.finishMin ?? ''}
+          placeholder="0.0"
+          aria-label="Finish 최소"
+          class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+        />
+        <span class="text-sm text-gray-500">~</span>
+        <input
+          id="finishMax"
+          name="finishMax"
+          type="number"
+          step="0.5"
+          min="0"
+          max="5"
+          value={data.filters?.finishMax ?? ''}
+          placeholder="5.0"
+          aria-label="Finish 최대"
+          class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:border-whiskey-500 focus:ring-2 focus:ring-whiskey-500"
+        />
+      </div>
     </div>
     <div class="sm:col-span-2 lg:col-span-4 flex flex-col sm:flex-row gap-3 sm:justify-end pt-2">
       <a
