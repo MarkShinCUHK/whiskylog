@@ -142,6 +142,17 @@ $$;
 GRANT EXECUTE ON FUNCTION increment_post_view(UUID) TO anon, authenticated;
 
 -- 테이스팅 게시글 생성 RPC (posts + post_tasting)
+-- 이전 시그니처 정리 (호환성 제거)
+DROP FUNCTION IF EXISTS public.create_tasting_post(
+  TEXT,
+  TEXT,
+  UUID,
+  SMALLINT,
+  SMALLINT,
+  SMALLINT,
+  SMALLINT,
+  BOOLEAN
+);
 CREATE OR REPLACE FUNCTION public.create_tasting_post(
   p_title TEXT,
   p_content TEXT,
@@ -288,6 +299,30 @@ CREATE INDEX IF NOT EXISTS idx_profiles_updated_at ON profiles(updated_at DESC);
 -- 안전한 검색 RPC (문자열 조립 기반 .or(...) 회피)
 -- - PostgREST 필터 문자열에 사용자 입력을 직접 넣지 않기 위해 DB 함수로 이동
 -- - SECURITY INVOKER: RLS 정책을 그대로 따름
+-- 이전 시그니처 정리 (호환성 제거)
+DROP FUNCTION IF EXISTS public.search_posts(
+  TEXT,
+  TEXT,
+  TIMESTAMPTZ,
+  TIMESTAMPTZ,
+  TEXT,
+  INTEGER,
+  INTEGER
+);
+DROP FUNCTION IF EXISTS public.search_posts(
+  TEXT,
+  TEXT,
+  TIMESTAMPTZ,
+  TIMESTAMPTZ,
+  TEXT,
+  INTEGER,
+  INTEGER,
+  TEXT,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC
+);
 CREATE OR REPLACE FUNCTION public.search_posts(
   p_query TEXT,
   p_author TEXT DEFAULT NULL,
@@ -408,6 +443,25 @@ GRANT EXECUTE ON FUNCTION public.search_posts(
   NUMERIC,
   NUMERIC
 ) TO anon, authenticated;
+
+-- 이전 시그니처 정리 (호환성 제거)
+DROP FUNCTION IF EXISTS public.search_posts_count(
+  TEXT,
+  TEXT,
+  TIMESTAMPTZ,
+  TIMESTAMPTZ
+);
+DROP FUNCTION IF EXISTS public.search_posts_count(
+  TEXT,
+  TEXT,
+  TIMESTAMPTZ,
+  TIMESTAMPTZ,
+  TEXT,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC,
+  NUMERIC
+);
 
 CREATE OR REPLACE FUNCTION public.search_posts_count(
   p_query TEXT,
