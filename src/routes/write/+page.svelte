@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { PUBLIC_TURNSTILE_SITE_KEY } from '$env/dynamic/public';
+  import { env } from '$env/dynamic/public';
   import { page } from '$app/stores';
   import { resolve } from '$app/paths';
   import { showToast } from '$lib/stores/toast';
@@ -25,7 +25,7 @@
   };
 
   let { form, data }: { form?: FormState; data?: { whiskies?: Array<{ id: string; name: string; brand?: string | null }> } } = $props();
-  const turnstileSiteKey = PUBLIC_TURNSTILE_SITE_KEY;
+  const turnstileSiteKey = env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
   
   let title = $state('');
   let content = $state('');
