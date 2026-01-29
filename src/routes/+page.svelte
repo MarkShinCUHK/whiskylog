@@ -162,6 +162,26 @@
           2분만에 나의 위스키 성향을 확인해보세요.
         </p>
       </a>
+
+      <!-- 맵 조회 -->
+      <a
+        href={resolve('/map')}
+        class="group bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg hover:border-whiskey-300 transition-all"
+      >
+        <div class="flex items-center gap-4 mb-4">
+          <div class="w-12 h-12 rounded-lg bg-whiskey-100 flex items-center justify-center group-hover:bg-whiskey-200 transition-colors">
+            <svg class="w-6 h-6 text-whiskey-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11.5A2.5 2.5 0 1112 6.5a2.5 2.5 0 010 5zm0 0v6m0 0l-3-3m3 3l3-3M5 20h14" />
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-gray-900 group-hover:text-whiskey-600 transition-colors">
+            맵 조회
+          </h2>
+        </div>
+        <p class="text-gray-600 text-sm">
+          콜키지 가능한 위스키 바를 지도로 확인하세요.
+        </p>
+      </a>
     </div>
   </section>
 </div>
