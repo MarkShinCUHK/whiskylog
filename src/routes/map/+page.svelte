@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { PUBLIC_NAVER_MAPS_CLIENT_ID } from '$env/dynamic/public';
+  import { env } from '$env/dynamic/public';
   import { loadNaverMaps } from '$lib/client/naverMaps';
 
   type MapLocation = {
@@ -35,13 +35,13 @@
   let selectedId = $state<string | null>(null);
 
   onMount(async () => {
-    if (!PUBLIC_NAVER_MAPS_CLIENT_ID) {
+    if (!env.PUBLIC_NAVER_MAPS_CLIENT_ID) {
       mapError = '네이버 지도 API 키가 설정되지 않았습니다.';
       return;
     }
 
     try {
-      const naver = await loadNaverMaps(PUBLIC_NAVER_MAPS_CLIENT_ID);
+      const naver = await loadNaverMaps(env.PUBLIC_NAVER_MAPS_CLIENT_ID);
       mapContainer = document.getElementById('naver-map') as HTMLDivElement | null;
       if (!mapContainer) return;
 
