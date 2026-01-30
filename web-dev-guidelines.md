@@ -48,7 +48,9 @@
 - ✅ 익명 글 작성 Turnstile 봇 방지
 - ✅ 알림 기능 (좋아요/댓글) + `/notifications` 라우트
 - ✅ 프로필 닉네임 중복 확인 + WBTI 표시/연동
-- ✅ 네이버 지도 맵 조회 페이지
+- ✅ 네이버 지도 맵 조회 페이지 (`/map`)
+  - 콜키지 장소 데이터베이스 연결 완료
+  - 지도 핀 클릭 시 왼쪽 목록 하이라이트 및 자동 스크롤
 
 ---
 
@@ -91,6 +93,9 @@ src/routes/
 ├── search/
 │   ├── +page.svelte        # 검색 결과 (/search)
 │   └── +page.server.ts     # 검색 로직
+├── map/
+│   ├── +page.svelte        # 콜키지 장소 지도 조회 (/map)
+│   └── +page.server.ts     # 콜키지 장소 데이터 로드
 ├── notifications/
 │   ├── +page.svelte        # 알림 목록 (/notifications)
 │   └── +page.server.ts     # 알림 로직
@@ -150,7 +155,8 @@ src/lib/server/supabase/
 └── queries/
     ├── posts.ts           # 게시글 쿼리 함수들
     ├── comments.ts        # 댓글 CRUD
-    └── likes.ts           # 좋아요 토글/조회
+    ├── likes.ts           # 좋아요 토글/조회
+    └── corkage.ts         # 콜키지 장소 쿼리 함수
         - listPosts()       # 목록 조회
         - getPostById()     # 상세 조회
         - createPost()      # 생성
@@ -263,6 +269,7 @@ src/lib/
             ├── likes.ts   # 좋아요 쿼리 함수 ✅
             ├── storage.ts # 이미지 업로드 함수 ✅
             ├── images.ts  # Blob URL 변환 함수 ✅
+            └── corkage.ts # 콜키지 장소 쿼리 함수 ✅
             └── notifications.ts # 알림 쿼리 함수 ✅
 ```
 

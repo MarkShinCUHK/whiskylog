@@ -1,2 +1,9 @@
 [mcp_servers.supabase]
-url = "https://mcp.supabase.com/mcp"
+command = "npx"
+args = [
+  "-y",
+  "@supabase/mcp-server-supabase@latest",
+  "--project-ref",
+  "bknnjzngiyotkckauyey"
+]
+env = { SUPABASE_ACCESS_TOKEN = "sbp_c6ed0c999f1f1eae9c89388ac0009c7f645c44e0" }

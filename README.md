@@ -143,7 +143,8 @@ whiskylog/
 │   │               ├── comments.ts # 댓글 쿼리 함수
 │   │               ├── likes.ts    # 좋아요 쿼리 함수
 │   │               ├── storage.ts  # 이미지 업로드 함수
-│   │               └── images.ts   # Blob URL 변환 함수
+│   │               ├── images.ts   # Blob URL 변환 함수
+│   │               └── corkage.ts  # 콜키지 장소 쿼리 함수
 │   ├── routes/
 │   │   ├── +layout.svelte       # 공통 레이아웃
 │   │   ├── +layout.server.ts    # 전역 세션 로드 (Header에서 사용)
@@ -154,6 +155,7 @@ whiskylog/
 │   │   ├── my-posts/            # 내 글 목록
 │   │   ├── search/              # 검색 결과
 │   │   ├── contact/             # 문의
+│   │   ├── map/                 # 콜키지 장소 지도 조회
 │   │   ├── posts/               # 게시글 관련 페이지
 │   │   │   ├── +page.svelte     # 게시글 리스트
 │   │   │   └── [id]/
@@ -212,6 +214,9 @@ whiskylog/
   - 전역 스타일: 폰트 렌더링, 포커스 링, 선택 색상 통일
 - ✅ 메인 페이지 정리 (게시글 목록/작성만 남기고 문의 추가)
 - ✅ 문의 페이지 추가 (`/contact`)
+- ✅ 맵 조회 페이지 추가 (`/map`) - 네이버 지도 API 기반 콜키지 장소 지도
+  - 콜키지 장소 데이터베이스 연결 (`corkage_places` 테이블)
+  - 지도 핀 클릭 시 왼쪽 목록 하이라이트 및 자동 스크롤
 - ✅ 반응형 디자인 세부 개선 (모바일/태블릿/데스크톱)
 - ✅ 로딩 상태 표시 (스켈레톤 UI) - 구현 완료, `/posts`, `/search` 페이지에서 사용 중
 - ✅ 에러 처리 개선
@@ -270,7 +275,16 @@ whiskylog/
   npm run import:corkage
   ```
 
+- 또는 `tmp/import_corkage_places.sql` 파일을 Supabase SQL Editor에서 직접 실행할 수 있습니다.
+
 ※ 사내/배포 환경에서 실행이 실패할 경우 네트워크 접근이 필요한 점을 확인하세요.
+
+### 맵 조회 페이지 (`/map`)
+
+- 네이버 지도 API를 사용한 콜키지 장소 지도 조회 기능
+- 데이터베이스의 `corkage_places` 테이블에서 좌표가 있는 장소를 지도에 표시
+- 지도 핀 클릭 시 왼쪽 목록에서 해당 항목 하이라이트 및 자동 스크롤
+- 환경 변수 `PUBLIC_NAVER_MAPS_CLIENT_ID` 필요
 
 ## 🛠 기술 스택
 

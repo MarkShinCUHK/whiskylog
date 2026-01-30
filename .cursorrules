@@ -105,6 +105,7 @@ src/
 │   ├── bookmarks/ (북마크)
 │   ├── search/ (검색 결과)
 │   ├── contact/ (문의)
+│   ├── map/ (콜키지 장소 지도 조회)
 │   ├── posts/
 │   │   ├── +page.svelte (게시글 리스트)
 │   │   └── [id]/
@@ -144,7 +145,8 @@ src/
 │               ├── comments.ts (댓글 쿼리 함수)
 │               ├── likes.ts (좋아요 쿼리 함수)
 │               ├── storage.ts (이미지 업로드 함수)
-│               └── images.ts (Blob URL 변환 함수)
+│               ├── images.ts (Blob URL 변환 함수)
+│               └── corkage.ts (콜키지 장소 쿼리 함수)
 ├── app.css (Tailwind CSS)
 └── app.html
 ```
