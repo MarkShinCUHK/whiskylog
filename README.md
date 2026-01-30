@@ -260,6 +260,18 @@ whiskylog/
 - ✅ 태그 시스템 (태그 입력/검색/필터)
 - ✅ 위스키 정보 데이터베이스
 
+### Corkage 장소 데이터 가져오기
+
+- `static/corkagemap_2026-01-30.csv` 파일을 기준으로 `corkage_places` 테이블을 채우는 스크립트를 추가했습니다 (`scripts/import-corkage.js`).
+- 실행 전 `.env` 또는 환경 변수(`PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`)가 설정되어 있어야 합니다.
+- 아래 명령을 실행하면 CSV를 파싱하여 Supabase의 `corkage_places` 테이블에 `name, address` 기준 upsert 됩니다:
+
+  ```bash
+  npm run import:corkage
+  ```
+
+※ 사내/배포 환경에서 실행이 실패할 경우 네트워크 접근이 필요한 점을 확인하세요.
+
 ## 🛠 기술 스택
 
 - **SvelteKit**: 프레임워크 (SSR 지원)

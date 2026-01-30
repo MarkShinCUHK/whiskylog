@@ -10,7 +10,8 @@
     "build": "svelte-kit sync && vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "import:corkage": "node scripts/import-corkage.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

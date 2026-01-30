@@ -120,6 +120,31 @@ BEFORE UPDATE ON post_tasting
 FOR EACH ROW
 EXECUTE FUNCTION public.set_updated_at();
 
+-- corkage_places 테이블
+CREATE TABLE IF NOT EXISTS corkage_places (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  address TEXT,
+  corkage TEXT,
+  bottle_limit TEXT,
+  glass_support TEXT,
+  phone TEXT,
+  lat DOUBLE PRECISION,
+  lng DOUBLE PRECISION,
+  last_checked DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT corkage_places_unique UNIQUE (name, address)
+);
+
+CREATE INDEX IF NOT EXISTS idx_corkage_places_name ON corkage_places(name);
+
+DROP TRIGGER IF EXISTS set_corkage_places_updated_at ON corkage_places;
+CREATE TRIGGER set_corkage_places_updated_at
+BEFORE UPDATE ON corkage_places
+FOR EACH ROW
+EXECUTE FUNCTION public.set_updated_at();
+
 -- 조회수 증가 함수 (RLS 우회용, 서버에서 호출)
 CREATE OR REPLACE FUNCTION increment_post_view(p_post_id UUID)
 RETURNS INTEGER
